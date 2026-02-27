@@ -1535,6 +1535,8 @@ class _SongInfoState extends State<_SongInfo> {
 
       if (!context.mounted) return;
 
+      final outerContext = context;
+
       showModalBottomSheet(
         context: context,
         backgroundColor: Colors.transparent,
@@ -1574,7 +1576,7 @@ class _SongInfoState extends State<_SongInfo> {
                   child: InkWell(
                     onTap: () {
                       Navigator.pop(context);
-                      _showCreatePlaylistDialog(context);
+                      _showCreatePlaylistDialog(outerContext);
                     },
                     borderRadius: BorderRadius.circular(8),
                     child: Container(
