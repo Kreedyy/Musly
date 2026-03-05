@@ -4,7 +4,7 @@
 
 🌐 **Website:** [musly.devid.ink](https://musly.devid.ink)
 
-[![Download Musly](https://img.shields.io/badge/Download-Musly%20v1.0.5-fa243c?style=for-the-badge&logo=github)](https://github.com/dddevid/Musly/releases/tag/v1.0.5)
+[![Download Musly](https://img.shields.io/badge/Download-Musly%20v1.0.6-fa243c?style=for-the-badge&logo=github)](https://github.com/dddevid/Musly/releases/tag/v1.0.6)
 [![Navidrome Client](https://img.shields.io/badge/Navidrome-Client-blue?style=for-the-badge)](https://musly.devid.ink)
 [![Subsonic Client](https://img.shields.io/badge/Subsonic-Client-green?style=for-the-badge)](https://musly.devid.ink)
 
@@ -137,6 +137,7 @@ This project is open source and available under the **Creative Commons Attributi
 [![Views](https://komarev.com/ghpvc/?username=dddevid-Musly&label=VIEWS&color=fa243c&style=for-the-badge)](https://github.com/dddevid/Musly)
 
 </div>
+
 
 
 
