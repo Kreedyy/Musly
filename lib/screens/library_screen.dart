@@ -224,10 +224,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
     }
 
     if (_selectedFilter == 'All' || _selectedFilter == 'Albums') {
-      
+      // When the Albums filter is active, prefer the full cached album list so
+      // that a subsequent loadRecentAlbums() network call (which returns only
+      // recently-played albums and can be empty on Navidrome) doesn't wipe the
+      // visible items. Fall back to recentAlbums only for the 'All' view.
       final albums = provider.isLocalOnlyMode
           ? provider.cachedAllAlbums
-          : provider.recentAlbums.take(20).toList();
+          : (_selectedFilter == 'Albums'
+              ? (provider.cachedAllAlbums.isNotEmpty
+                  ? provider.cachedAllAlbums
+                  : provider.recentAlbums)
+              : provider.recentAlbums.take(20).toList());
       items.addAll(
         albums.map(
           (a) => _LibraryItem(

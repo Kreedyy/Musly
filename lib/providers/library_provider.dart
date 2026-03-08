@@ -465,10 +465,16 @@ class LibraryProvider extends ChangeNotifier {
   Future<void> loadRecentAlbums() async {
     if (_serverOfflineMode) return;
     try {
-      _recentAlbums = await _subsonicService.getAlbumList(
+      final fetched = await _subsonicService.getAlbumList(
         type: 'recent',
         size: 20,
       );
+      // Only replace the list when the server actually returned results.
+      // On Navidrome, type=recent returns [] if nothing has been played
+      // recently, which would wipe the cached albums shown in the UI.
+      if (fetched.isNotEmpty) {
+        _recentAlbums = fetched;
+      }
       notifyListeners();
       _androidAutoService.updateAlbums(_recentAlbums, getCoverArtUrl);
     } catch (e) {
