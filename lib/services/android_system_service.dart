@@ -157,8 +157,12 @@ class AndroidSystemService {
     String? genre,
     int? year,
   }) async {
-    if (defaultTargetPlatform != TargetPlatform.android &&
-        defaultTargetPlatform != TargetPlatform.iOS) { return; }
+    // On iOS, MPNowPlayingInfoCenter is maintained by the audio_service plugin
+    // (MuslyAudioHandler.updateNowPlaying).  Calling iOSSystemPlugin here as
+    // well would write conflicting data to the same API, so we bail out early.
+    if (defaultTargetPlatform == TargetPlatform.iOS) { return; }
+
+    if (defaultTargetPlatform != TargetPlatform.android) { return; }
 
     try {
       await _methodChannel.invokeMethod('updatePlaybackState', {

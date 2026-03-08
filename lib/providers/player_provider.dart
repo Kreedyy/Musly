@@ -20,6 +20,7 @@ import '../services/discord_rpc_service.dart';
 import '../services/storage_service.dart';
 import '../services/cast_service.dart';
 import '../services/upnp_service.dart';
+import '../services/audio_handler.dart';
 import '../providers/library_provider.dart';
 
 enum RepeatMode { off, all, one }
@@ -27,7 +28,9 @@ enum RepeatMode { off, all, one }
 class PlayerProvider extends ChangeNotifier {
   final SubsonicService _subsonicService;
   late final StorageService _storageService;
-  final AudioPlayer _audioPlayer = AudioPlayer();
+  final MuslyAudioHandler _audioHandler;
+  // Convenience getter — use this everywhere just_audio is accessed directly.
+  AudioPlayer get _audioPlayer => _audioHandler.player;
   final OfflineService _offlineService = OfflineService();
   final AndroidAutoService _androidAutoService = AndroidAutoService();
   final AndroidSystemService _androidSystemService = AndroidSystemService();
@@ -70,6 +73,7 @@ class PlayerProvider extends ChangeNotifier {
     StorageService storageService,
     this._castService,
     this._upnpService,
+    this._audioHandler,
   ) {
     _storageService = storageService;
     _discordRpcService = DiscordRpcService(storageService);
@@ -79,12 +83,25 @@ class PlayerProvider extends ChangeNotifier {
     _initializeAndroidAuto();
     _initializeSystemServices();
     _initializeAutoDj();
+    _wireAudioHandlerCallbacks();
     
     if (!kIsWeb &&
         (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
       _discordRpcService.initialize();
       loadDiscordRpcStateStyle();
     }
+  }
+
+  /// Connect [MuslyAudioHandler] lock-screen commands back to this provider.
+  /// On iOS these come via [audio_service] instead of [iOSSystemPlugin].
+  void _wireAudioHandlerCallbacks() {
+    _audioHandler.onPlay = play;
+    _audioHandler.onPause = pause;
+    _audioHandler.onStop = stop;
+    _audioHandler.onSkipNext = skipNext;
+    _audioHandler.onSkipPrevious = skipPrevious;
+    _audioHandler.onSeekTo = seek;
+    _audioHandler.onTogglePlayPause = togglePlayPause;
   }
 
   void setLibraryProvider(LibraryProvider libraryProvider) {
@@ -574,6 +591,17 @@ class PlayerProvider extends ChangeNotifier {
       duration: effectiveDuration,
       position: _position,
       isPlaying: _isPlaying,
+    );
+
+    // Update the audio_service handler so lock screen / Control Center / iOS
+    // Now Playing info stays accurate regardless of the UI lifecycle.
+    _audioHandler.updateNowPlaying(
+      id: _currentSong!.id,
+      title: _currentSong!.title,
+      artist: _currentSong!.artist,
+      album: _currentSong!.album,
+      artworkUrl: artworkUrl,
+      duration: effectiveDuration,
     );
 
     _updateDiscordRpc();
@@ -1400,7 +1428,7 @@ class PlayerProvider extends ChangeNotifier {
     _sleepTimer?.cancel();
     _castService.removeListener(_onCastStateChanged);
     _upnpService.removeListener(_onUpnpStateChanged);
-    _audioPlayer.dispose();
+    _audioHandler.customAction('dispose');
     _androidAutoService.dispose();
     _androidSystemService.dispose();
     _windowsService.dispose();

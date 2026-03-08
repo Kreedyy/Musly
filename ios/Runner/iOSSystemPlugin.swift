@@ -118,10 +118,15 @@ public class iOSSystemPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     }
     
     private func initialize() {
+        // Remote command center (lock screen / Control Center) and
+        // MPNowPlayingInfoCenter are now managed by the audio_service Flutter
+        // plugin (MuslyAudioHandler) to avoid conflict with double registration.
+        // This plugin only keeps audio session configuration and OS notification
+        // handlers (interruptions, route changes) so audio focus is correctly
+        // handled on phone calls and headphone disconnects.
         setupAudioSession()
-        setupRemoteCommandCenter()
         setupNotifications()
-        print("iOSSystemPlugin initialized")
+        print("iOSSystemPlugin initialized (remote commands handled by audio_service)")
     }
     
     private func setupAudioSession() {

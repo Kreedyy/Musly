@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
+import 'package:audio_service/audio_service.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 
 import 'l10n/app_localizations.dart';
 import 'services/services.dart';
+import 'services/audio_handler.dart';
 import 'services/transcoding_service.dart';
 import 'services/local_music_service.dart';
 import 'providers/providers.dart';
@@ -78,9 +80,14 @@ void main() async {
     debugPrint('Failed to initialize player UI settings: $e');
   }
 
+  // Initialise the audio service BEFORE runApp so the background audio engine
+  // is ready and fully decoupled from the Flutter widget lifecycle on iOS.
+  final audioHandler = await initAudioService();
+
   runApp(
-    MultiProvider(
-      providers: [
+    AudioServiceWidget(
+      child: MultiProvider(
+        providers: [
         Provider<StorageService>.value(value: storageService),
         Provider<SubsonicService>.value(value: subsonicService),
         ChangeNotifierProvider<RecommendationService>.value(
@@ -106,11 +113,13 @@ void main() async {
             storageService,
             castService,
             upnpService,
+            audioHandler,
           ),
         ),
         ChangeNotifierProvider(create: (_) => LibraryProvider(subsonicService)),
       ],
       child: const MuslyApp(),
+    ),
     ),
   );
 }
