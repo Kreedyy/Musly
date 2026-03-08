@@ -15,9 +15,58 @@ on:
         default: '1.0.5'
 
 jobs:
+
+  # ── Shared Flutter + pub setup (Ubuntu) ───────────────────────────────────
+  # build-android and build-linux both run on ubuntu-latest and share this cache.
+  prepare-ubuntu:
+    name: Flutter setup (ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Save pub cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-ubuntu-${{ hashFiles('pubspec.lock') }}
+          restore-keys: pub-ubuntu-
+
+      - run: flutter pub get
+
+  # ── Shared Flutter + pub setup (macOS) ────────────────────────────────────
+  # build-ios and build-macos both run on macos-latest and share this cache.
+  prepare-macos:
+    name: Flutter setup (macos)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Save pub cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-macos-${{ hashFiles('pubspec.lock') }}
+          restore-keys: pub-macos-
+
+      - run: flutter pub get
+
+  # ── Android ───────────────────────────────────────────────────────────────
   build-android:
     name: Build Android APK
     runs-on: ubuntu-latest
+    needs: prepare-ubuntu
 
     steps:
       - name: Checkout code
@@ -35,11 +84,15 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Restore pub cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-ubuntu-${{ hashFiles('pubspec.lock') }}
+          restore-keys: pub-ubuntu-
+
       - name: Get dependencies
         run: flutter pub get
-
-      - name: Generate localizations
-        run: flutter gen-l10n
 
       - name: Build APK
         run: flutter build apk --release --split-per-abi
@@ -53,6 +106,8 @@ jobs:
             build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
             build/app/outputs/flutter-apk/app-x86_64-release.apk
 
+  # ── Windows ───────────────────────────────────────────────────────────────
+  # Only one Windows job — no separate prepare step needed; cache inline.
   build-windows:
     name: Build Windows
     runs-on: windows-latest
@@ -67,11 +122,15 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Cache pub packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PUB_CACHE }}
+          key: pub-windows-${{ hashFiles('pubspec.lock') }}
+          restore-keys: pub-windows-
+
       - name: Get dependencies
         run: flutter pub get
-
-      - name: Generate localizations
-        run: flutter gen-l10n
 
       - name: Build Windows
         run: flutter build windows --release
@@ -100,15 +159,17 @@ jobs:
           name: windows-build
           path: musly-windows-setup.exe
 
+  # ── Linux ─────────────────────────────────────────────────────────────────
   build-linux:
     name: Build Linux
     runs-on: ubuntu-latest
+    needs: prepare-ubuntu
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -122,11 +183,15 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Restore pub cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-ubuntu-${{ hashFiles('pubspec.lock') }}
+          restore-keys: pub-ubuntu-
+
       - name: Get dependencies
         run: flutter pub get
-
-      - name: Generate localizations
-        run: flutter gen-l10n
 
       - name: Build Linux
         run: flutter build linux --release
@@ -142,9 +207,11 @@ jobs:
           name: linux-build
           path: musly-linux-x64.tar.gz
 
+  # ── iOS ───────────────────────────────────────────────────────────────────
   build-ios:
     name: Build iOS IPA
     runs-on: macos-latest
+    needs: prepare-macos
 
     steps:
       - name: Checkout code
@@ -156,11 +223,15 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Restore pub cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-macos-${{ hashFiles('pubspec.lock') }}
+          restore-keys: pub-macos-
+
       - name: Get dependencies
         run: flutter pub get
-
-      - name: Generate localizations
-        run: flutter gen-l10n
 
       - name: Install CocoaPods dependencies
         run: |
@@ -183,9 +254,11 @@ jobs:
           name: ios-build
           path: musly-ios.ipa
 
+  # ── macOS ─────────────────────────────────────────────────────────────────
   build-macos:
     name: Build macOS
     runs-on: macos-latest
+    needs: prepare-macos
 
     steps:
       - name: Checkout code
@@ -197,11 +270,15 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Restore pub cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-macos-${{ hashFiles('pubspec.lock') }}
+          restore-keys: pub-macos-
+
       - name: Get dependencies
         run: flutter pub get
-
-      - name: Generate localizations
-        run: flutter gen-l10n
 
       - name: Install CocoaPods dependencies
         run: |

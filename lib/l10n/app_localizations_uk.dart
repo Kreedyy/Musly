@@ -4,9 +4,9 @@ import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
 
-/// The translations for Chinese (`zh`).
-class AppLocalizationsZh extends AppLocalizations {
-  AppLocalizationsZh([String locale = 'zh']) : super(locale);
+/// The translations for Ukrainian (`uk`).
+class AppLocalizationsUk extends AppLocalizations {
+  AppLocalizationsUk([String locale = 'uk']) : super(locale);
 
   @override
   String get appName => 'Musly';
@@ -498,7 +498,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get categoryTopRated => 'Top Rated';
 
   @override
-  String get categoryGenres => 'Genres';
+  String get categoryGenres => 'Жанри';
 
   @override
   String get categoryFavorites => 'Favorites';

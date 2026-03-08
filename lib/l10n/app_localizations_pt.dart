@@ -467,7 +467,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get searchTitle => 'Pesquisar';
+  String get searchTitle => 'Buscar';
 
   @override
   String get searchPlaceholder => 'Artistas, músicas e álbuns';
@@ -482,14 +482,14 @@ class AppLocalizationsPt extends AppLocalizations {
   String get browseCategories => 'Navegar categorias';
 
   @override
-  String get liveSearchSection => 'Search';
+  String get liveSearchSection => 'Busca';
 
   @override
-  String get liveSearch => 'Live Search';
+  String get liveSearch => 'Busca em tempo real';
 
   @override
   String get liveSearchSubtitle =>
-      'Update results as you type instead of showing a dropdown';
+      'Atualizar resultados enquanto digita em vez de mostrar um menu suspenso';
 
   @override
   String get categoryMadeForYou => 'Feito para você';

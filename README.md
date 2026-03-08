@@ -2,7 +2,7 @@
 
 **Musly** is a free **Navidrome client** and **Subsonic music player** with a beautiful Apple Music-inspired interface. Stream your self-hosted music library from Navidrome, Subsonic, or Airsonic servers on Android, iOS, Windows, Linux, and macOS.
 
-🌐 **Website:** ~~musly.devid.ink~~ (Temporarily unavailable)
+🌐 **Website:** [musly.devid.ink](https://musly.devid.ink/) (Temporarily unavailable)
 
 [![Download Musly](https://img.shields.io/badge/Download-Musly%20v1.0.8-fa243c?style=for-the-badge&logo=github)](https://github.com/dddevid/Musly/releases/tag/v1.0.8)
 [![Navidrome Client](https://img.shields.io/badge/Navidrome-Client-blue?style=for-the-badge)](https://musly.devid.ink)
@@ -43,10 +43,7 @@ Musly is a cross-platform application that supports:
 ## Download Musly - Best Navidrome Client
 
 You can download the latest release of Musly (the best Navidrome client):
-👉 **[Download Musly v1.0.6 - Navidrome Client](https://github.com/dddevid/Musly/releases/tag/v1.0.6)**
-
-> [!NOTE]  
-> Prebuilt binaries are available: an APK for **Android** (best Navidrome Android client), and a prebuilt exe build for **Windows** (best Navidrome Windows client). For **iOS** (Navidrome iOS client) and other desktop platforms, you still need to build the app from source.
+👉 **[Download Musly v1.0.8 - Navidrome Client](https://github.com/dddevid/Musly/releases/tag/v1.0.8)**
 
 ## Community
 
@@ -76,7 +73,7 @@ If you find Musly useful and want to support its development
 
 - [x] **Custom PC UX**: Basic desktop layout with persistent sidebar and dedicated player bar.
 - [x] **Desktop Lyrics & Fullscreen Mode**: Apple Music–style synced lyrics view with smooth scrolling and true fullscreen on desktop.
-- [ ] **CarPlay Support**: Add a dedicated browsing interface for CarPlay.
+- [-] **CarPlay Support**: Add a dedicated browsing interface for CarPlay. (Carplay needs a signed certificate, until the app is available on the appstore carplay wont work, only if selfsigned and with carplay enabled in the code)
 - [ ] **Last.fm Integration**: Support for scrobbling and artist/album metadata.
 - [X] **Local Playlists**: Manage playlists locally, independent of the Subsonic server.
 - [ ] **Custom API Server**: Support for custom backend implementations and extended APIs.
