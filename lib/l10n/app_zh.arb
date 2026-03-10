@@ -1463,6 +1463,10 @@
   "@replayGainMode": {
     "description": "Label for the ReplayGain mode selector"
   },
+  "transcodingMobileQualitySubtitleSmart": "在移动数据上自动使用",
+  "@transcodingMobileQualitySubtitleSmart": {
+    "description": "Mobile quality subtitle when smart mode is on"
+  },
   "@sectionCacheSettings": {
     "description": "Storage settings section header"
   },
