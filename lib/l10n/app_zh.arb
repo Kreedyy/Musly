@@ -1479,7 +1479,27 @@
   "@sectionBpmAnalysis": {
     "description": "Storage settings section header for BPM analysis"
   },
+  "musicCacheTitle": "音乐缓存",
+  "@musicCacheTitle": {
+    "description": "Toggle title for music metadata cache"
+  },
+  "musicCacheSubtitle": "本地保存歌曲元数据",
+  "@musicCacheSubtitle": {
+    "description": "Subtitle for music cache toggle"
+  },
+  "bpmCacheTitle": "BPM 缓存",
+  "@bpmCacheTitle": {
+    "description": "Toggle title for BPM analysis cache"
+  },
+  "bpmCacheSubtitle": "本地保存 BPM 分析",
+  "@bpmCacheSubtitle": {
+    "description": "Subtitle for BPM cache toggle"
+  },
   "@clearAllCache": {
     "description": "Button to clear all cached data"
+  },
+  "sectionAboutDeveloper": "开发者",
+  "@sectionAboutDeveloper": {
+    "description": "About screen developer section header"
   }
 }
