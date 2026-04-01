@@ -83,15 +83,36 @@ class MultiArtistWidget extends StatelessWidget {
         albumCount: 0,
         songCount: 0,
       );
-      if (result.artists.isNotEmpty && context.mounted) {
+      if (!context.mounted) return;
+      if (result.artists.isNotEmpty) {
         final matched = result.artists.firstWhere(
           (a) => a.name.toLowerCase() == name.toLowerCase(),
           orElse: () => result.artists.first,
         );
         onBeforeNavigate?.call();
         NavigationHelper.push(context, ArtistScreen(artistId: matched.id));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.artistNotFound(name),
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
-    } catch (_) {}
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.errorSearchingArtist(e),
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
   }
 
   void _showArtistsSheet(BuildContext context, List<ArtistRef> artistList) {
@@ -114,7 +135,7 @@ class MultiArtistWidget extends StatelessWidget {
 
     if (effectiveArtists.isEmpty) {
       return Text(
-        'Unknown Artist',
+        AppLocalizations.of(context)!.unknownArtist,
         style: style,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
@@ -234,7 +255,7 @@ class _ArtistsBottomSheet extends StatelessWidget {
                   height: 46,
                   child: ClipOval(
                     child: AlbumArtwork(
-                      coverArt: artist.id.isNotEmpty ? artist.id : null,
+                      coverArt: artist.effectiveCoverArt,
                       size: 46,
                       borderRadius: 23,
                       shadow: const BoxShadow(color: Colors.transparent),

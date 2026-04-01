@@ -59,6 +59,8 @@ class Album {
       'year': year,
       'genre': genre,
       'created': created?.toIso8601String(),
+      if (artistParticipants != null)
+        'artists': artistParticipants!.map((a) => a.toJson()).toList(),
     };
   }
 

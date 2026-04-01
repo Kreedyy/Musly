@@ -109,6 +109,8 @@ class Song {
         if (replayGainTrackPeak != null) 'trackPeak': replayGainTrackPeak,
         if (replayGainAlbumPeak != null) 'albumPeak': replayGainAlbumPeak,
       },
+      if (artistParticipants != null)
+        'artists': artistParticipants!.map((a) => a.toJson()).toList(),
     };
   }
 
