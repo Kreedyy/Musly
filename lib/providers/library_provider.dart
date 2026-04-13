@@ -301,7 +301,19 @@ class LibraryProvider extends ChangeNotifier {
       }
 
       _cachedAllAlbums = allAlbums;
-      _cachedAllSongs = [];
+      final Map<String, Song> songById = {};
+      for (final album in allAlbums) {
+        try {
+          final albumSongs = await _subsonicService.getAlbumSongs(album.id);
+          for (final song in albumSongs) {
+            songById[song.id] = song;
+          }
+        } catch (e) {
+          debugPrint('Error loading album ${album.id}: $e');
+        }
+      }
+
+      _cachedAllSongs = songById.values.toList();
       _lastCacheUpdate = DateTime.now();
 
       await _saveCachedData();
