@@ -300,8 +300,10 @@ class LibraryProvider extends ChangeNotifier {
         offset += pageSize;
       }
 
-      _cachedAllAlbums = allAlbums;
+      final previousAlbums = _cachedAllAlbums;
+      final previousSongs = _cachedAllSongs;
       final Map<String, Song> songById = {};
+      var failedAlbumLoads = 0;
       for (final album in allAlbums) {
         try {
           final albumSongs = await _subsonicService.getAlbumSongs(album.id);
@@ -309,10 +311,22 @@ class LibraryProvider extends ChangeNotifier {
             songById[song.id] = song;
           }
         } catch (e) {
+          failedAlbumLoads++;
           debugPrint('Error loading album ${album.id}: $e');
         }
       }
 
+      if (failedAlbumLoads > 0) {
+        _cachedAllAlbums = previousAlbums;
+        _cachedAllSongs = previousSongs;
+        debugPrint(
+          'Background refresh incomplete: $failedAlbumLoads album(s) failed; keeping previous cache.',
+        );
+        notifyListeners();
+        return;
+      }
+
+      _cachedAllAlbums = allAlbums;
       _cachedAllSongs = songById.values.toList();
       _lastCacheUpdate = DateTime.now();
 
