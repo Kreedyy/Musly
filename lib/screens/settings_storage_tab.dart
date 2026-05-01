@@ -415,21 +415,54 @@ class _SettingsStorageTabState extends State<SettingsStorageTab> {
 
   Future<void> _downloadAllLibrary() async {
     try {
-      
       final libraryProvider = context.read<LibraryProvider>();
       final subsonicService = context.read<SubsonicService>();
 
+      // Show loading indicator
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Loading library...'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+
       await libraryProvider.ensureLibraryLoaded();
+
+      // If still empty, try to refresh from server with a small delay
+      if (libraryProvider.cachedAllSongs.isEmpty) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        // Force refresh by calling refresh method
+        await libraryProvider.refresh();
+      }
 
       final allSongs = libraryProvider.cachedAllSongs;
 
       if (allSongs.isEmpty) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.noSongsAvailable),
+        final retry = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text(AppLocalizations.of(context)!.noSongsAvailable),
+            content: const Text(
+              'Library appears to be empty or failed to load. Make sure your server supports full library scanning.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(AppLocalizations.of(context)!.cancel),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Retry'),
+              ),
+            ],
           ),
         );
+        if (retry == true) {
+          return _downloadAllLibrary();
+        }
         return;
       }
 
@@ -560,7 +593,9 @@ class _SettingsStorageTabState extends State<SettingsStorageTab> {
       child: LinearProgressIndicator(
         value: progress,
         backgroundColor: _isDark ? AppTheme.darkCard : AppTheme.lightDivider,
-        valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
+        valueColor: AlwaysStoppedAnimation<Color>(
+          Theme.of(context).colorScheme.primary,
+        ),
       ),
     );
   }

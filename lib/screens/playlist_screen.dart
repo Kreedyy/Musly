@@ -27,6 +27,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
   bool _isLoading = true;
   bool _isDownloading = false;
   bool _isSelecting = false;
+  bool _isReordering = false;
   final Set<int> _selectedIndices = {};
 
   @override
@@ -80,7 +81,8 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
         songIndexesToRemove: [index],
       );
       setState(() {
-        final updatedSongs = List<Song>.from(_playlist!.songs!)..removeAt(index);
+        final updatedSongs = List<Song>.from(_playlist!.songs!)
+          ..removeAt(index);
         _playlist = _playlist!.copyWith(
           songCount: updatedSongs.length,
           songs: updatedSongs,
@@ -109,8 +111,53 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
   void _toggleSelectMode() {
     setState(() {
       _isSelecting = !_isSelecting;
+      _isReordering = false;
       _selectedIndices.clear();
     });
+  }
+
+  void _toggleReorderMode() {
+    setState(() {
+      _isReordering = !_isReordering;
+      _isSelecting = false;
+      _selectedIndices.clear();
+    });
+  }
+
+  Future<void> _onSongReordered(int oldIndex, int newIndex) async {
+    if (oldIndex == newIndex) return;
+
+    final subsonicService = Provider.of<SubsonicService>(
+      context,
+      listen: false,
+    );
+
+    setState(() {
+      final updatedSongs = List<Song>.from(_playlist!.songs!);
+      final song = updatedSongs.removeAt(oldIndex);
+      updatedSongs.insert(newIndex > oldIndex ? newIndex - 1 : newIndex, song);
+      _playlist = _playlist!.copyWith(songs: updatedSongs);
+    });
+
+    try {
+      await subsonicService.updatePlaylist(
+        playlistId: widget.playlistId,
+        songIndexesToRemove: [oldIndex],
+        songIdsToAdd: [
+          _playlist!.songs![newIndex > oldIndex ? newIndex - 1 : newIndex].id,
+        ],
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error reordering song: $e'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+      _loadPlaylist();
+    }
   }
 
   void _toggleSelection(int index) {
@@ -226,7 +273,9 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
         setState(() => _isDownloading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Downloaded ${songs.length} songs from ${_playlist!.name}'),
+            content: Text(
+              'Downloaded ${songs.length} songs from ${_playlist!.name}',
+            ),
             duration: const Duration(seconds: 3),
           ),
         );
@@ -246,6 +295,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     if (_isLoading) {
       return Scaffold(
@@ -273,17 +323,22 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
       appBar: AppBar(
         title: _isSelecting
             ? Text('${_selectedIndices.length} selected')
+            : _isReordering
+            ? const Text('Reorder Songs')
             : Text(_playlist!.name),
-        leading: _isSelecting
+        leading: _isSelecting || _isReordering
             ? IconButton(
                 icon: const Icon(CupertinoIcons.xmark),
-                onPressed: _toggleSelectMode,
+                onPressed: _isSelecting
+                    ? _toggleSelectMode
+                    : _toggleReorderMode,
               )
             : null,
         actions: [
           if (_isSelecting) ...[
             IconButton(
-              tooltip: _selectedIndices.length == (_playlist?.songs?.length ?? 0)
+              tooltip:
+                  _selectedIndices.length == (_playlist?.songs?.length ?? 0)
                   ? 'Deselect all'
                   : 'Select all',
               icon: Icon(
@@ -299,7 +354,21 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
               color: _selectedIndices.isNotEmpty ? Colors.red : null,
               onPressed: _selectedIndices.isNotEmpty ? _removeSelected : null,
             ),
+          ] else if (_isReordering) ...[
+            IconButton(
+              tooltip: 'Done reordering',
+              icon: const Icon(CupertinoIcons.checkmark),
+              onPressed: _toggleReorderMode,
+            ),
           ] else ...[
+            IconButton(
+              tooltip: 'Reorder songs',
+              icon: const Icon(CupertinoIcons.arrow_up_arrow_down),
+              onPressed:
+                  _playlist!.songs != null && _playlist!.songs!.length > 1
+                  ? _toggleReorderMode
+                  : null,
+            ),
             IconButton(
               tooltip: 'Select songs',
               icon: const Icon(CupertinoIcons.checkmark_circle),
@@ -399,6 +468,34 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                       ),
                     ),
                   )
+                : _isReordering
+                ? ReorderableListView.builder(
+                    padding: const EdgeInsets.only(bottom: 150),
+                    itemCount: _playlist!.songs!.length,
+                    onReorder: _onSongReordered,
+                    itemBuilder: (context, index) {
+                      final song = _playlist!.songs![index];
+                      return ListTile(
+                        key: ValueKey('reorder_${song.id}_$index'),
+                        leading: Icon(
+                          CupertinoIcons.line_horizontal_3,
+                          color: isDark
+                              ? AppTheme.darkSecondaryText
+                              : AppTheme.lightSecondaryText,
+                        ),
+                        title: Text(
+                          song.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(
+                          song.artist ?? '',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      );
+                    },
+                  )
                 : ListView.builder(
                     padding: const EdgeInsets.only(bottom: 150),
                     itemCount: _playlist!.songs!.length,
@@ -429,7 +526,10 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                           onChanged: (_) => _toggleSelection(index),
                           activeColor: AppTheme.appleMusicRed,
                           controlAffinity: ListTileControlAffinity.leading,
-                          contentPadding: const EdgeInsets.only(left: 4, right: 16),
+                          contentPadding: const EdgeInsets.only(
+                            left: 4,
+                            right: 16,
+                          ),
                           title: Text(
                             song.title,
                             maxLines: 1,
@@ -479,8 +579,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                                       child: const Text('Cancel'),
                                     ),
                                     TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(ctx, true),
+                                      onPressed: () => Navigator.pop(ctx, true),
                                       child: const Text(
                                         'Remove',
                                         style: TextStyle(color: Colors.red),

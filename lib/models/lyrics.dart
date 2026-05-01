@@ -44,7 +44,12 @@ class SyncedLyrics {
         final milliseconds = millisPart.length == 2
             ? int.parse(millisPart) * 10
             : int.parse(millisPart);
-        final text = match.group(4)?.trim() ?? '';
+        var text = match.group(4)?.trim() ?? '';
+
+        // Remove word-by-word timestamps like <00:00.50> or <00:00:50>
+        text = text.replaceAll(RegExp(r'<\d{1,2}:\d{2}[:.]\d{2,3}>'), '');
+        // Also remove any remaining < > tags that might be timestamps
+        text = text.replaceAll(RegExp(r'<\d+:\d+\.?\d*>'), '');
 
         if (text.isNotEmpty) {
           lines.add(

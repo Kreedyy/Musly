@@ -52,7 +52,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
               ),
             ),
             actions: [
-              
               IconButton(
                 icon: Icon(
                   CupertinoIcons.refresh,
@@ -158,7 +157,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   ),
                 ],
                 if (_selectedFilter == 'All' || _selectedFilter == 'Faves') ...[
-                  if (_selectedFilter == 'All') ...[  
+                  if (_selectedFilter == 'All') ...[
                     _SpotifyLibraryTile(
                       icon: CupertinoIcons.heart_fill,
                       iconColor: const Color(0xFF8B5CF6),
@@ -191,7 +190,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       isGradient: false,
                       onTap: () => _navigate(context, const RadioScreen()),
                     ),
-                  ] else ...[  
+                  ] else ...[
                     _SpotifyLibraryTile(
                       icon: CupertinoIcons.heart_fill,
                       iconColor: const Color(0xFF8B5CF6),
@@ -263,8 +262,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
             type: 'Album',
             id: a.id,
             name: a.name,
-            subtitle: a.artistParticipants != null &&
-                    a.artistParticipants!.isNotEmpty
+            subtitle:
+                a.artistParticipants != null && a.artistParticipants!.isNotEmpty
                 ? a.artistParticipants!.map((r) => r.name).join(', ')
                 : (a.artist ?? ''),
             coverArt: a.coverArt,
@@ -283,8 +282,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
             type: 'Album',
             id: a.id,
             name: a.name,
-            subtitle: a.artistParticipants != null &&
-                    a.artistParticipants!.isNotEmpty
+            subtitle:
+                a.artistParticipants != null && a.artistParticipants!.isNotEmpty
                 ? a.artistParticipants!.map((r) => r.name).join(', ')
                 : (a.artist ?? ''),
             coverArt: a.coverArt,
@@ -293,20 +292,26 @@ class _LibraryScreenState extends State<LibraryScreen> {
       );
     }
 
-    if (_selectedFilter == 'Albums') {
+    if (_selectedFilter == 'All' || _selectedFilter == 'Albums') {
+      // When the Albums filter is active, prefer the full cached album list so
+      // that a subsequent loadRecentAlbums() network call (which returns only
+      // recently-played albums and can be empty on Navidrome) doesn't wipe the
+      // visible items. Fall back to recentAlbums only for the 'All' view.
       final albums = provider.isLocalOnlyMode
           ? provider.cachedAllAlbums
-          : (provider.cachedAllAlbums.isNotEmpty
-              ? provider.cachedAllAlbums
-              : provider.recentAlbums);
+          : (_selectedFilter == 'Albums'
+                ? (provider.cachedAllAlbums.isNotEmpty
+                      ? provider.cachedAllAlbums
+                      : provider.recentAlbums)
+                : provider.recentAlbums.take(20).toList());
       items.addAll(
         albums.map(
           (a) => _LibraryItem(
             type: 'Album',
             id: a.id,
             name: a.name,
-            subtitle: a.artistParticipants != null &&
-                    a.artistParticipants!.isNotEmpty
+            subtitle:
+                a.artistParticipants != null && a.artistParticipants!.isNotEmpty
                 ? a.artistParticipants!.map((r) => r.name).join(', ')
                 : (a.artist ?? ''),
             coverArt: a.coverArt,
@@ -488,7 +493,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
         final songs = libraryProvider.cachedAllSongs;
         final index = songs.indexWhere((s) => s.id == item.id);
         if (index >= 0) {
-          playerProvider.playSong(songs[index], playlist: songs, startIndex: index);
+          playerProvider.playSong(
+            songs[index],
+            playlist: songs,
+            startIndex: index,
+          );
         }
         break;
     }
@@ -770,102 +779,129 @@ class _SettingsSheet extends StatelessWidget {
       child: SafeArea(
         child: SingleChildScrollView(
           child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 8),
-            Container(
-              width: 36,
-              height: 5,
-              decoration: BoxDecoration(
-                color: isDark ? AppTheme.darkDivider : AppTheme.lightDivider,
-                borderRadius: BorderRadius.circular(2.5),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              AppLocalizations.of(context)!.settingsTitle,
-              style: theme.textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 24),
-            if (authProvider.config != null) ...[
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? AppTheme.darkCard
-                        : AppTheme.lightBackground,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        authProvider.state == AuthState.offlineMode
-                            ? CupertinoIcons.wifi_slash
-                            : CupertinoIcons.checkmark_circle_fill,
-                        color: authProvider.state == AuthState.offlineMode
-                            ? Colors.orange
-                            : Colors.green,
-                        size: 24,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              authProvider.state == AuthState.offlineMode
-                                  ? AppLocalizations.of(context)!.offlineMode
-                                  : AppLocalizations.of(context)!.connected,
-                              style: theme.textTheme.titleMedium,
-                            ),
-                            Text(
-                              authProvider.config!.serverUrl,
-                              style: theme.textTheme.bodySmall,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                width: 36,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: isDark ? AppTheme.darkDivider : AppTheme.lightDivider,
+                  borderRadius: BorderRadius.circular(2.5),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
+              Text(
+                AppLocalizations.of(context)!.settingsTitle,
+                style: theme.textTheme.headlineMedium,
+              ),
+              const SizedBox(height: 24),
+              if (authProvider.config != null) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppTheme.darkCard
+                          : AppTheme.lightBackground,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          authProvider.state == AuthState.offlineMode
+                              ? CupertinoIcons.wifi_slash
+                              : CupertinoIcons.checkmark_circle_fill,
+                          color: authProvider.state == AuthState.offlineMode
+                              ? Colors.orange
+                              : Colors.green,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                authProvider.state == AuthState.offlineMode
+                                    ? AppLocalizations.of(context)!.offlineMode
+                                    : AppLocalizations.of(context)!.connected,
+                                style: theme.textTheme.titleMedium,
+                              ),
+                              Text(
+                                authProvider.config!.serverUrl,
+                                style: theme.textTheme.bodySmall,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+              ListTile(
+                leading: Icon(
+                  CupertinoIcons.gear_alt,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+                title: Text(AppLocalizations.of(context)!.settingsTitle),
+                trailing: Icon(
+                  CupertinoIcons.chevron_forward,
+                  size: 18,
+                  color: isDark ? AppTheme.darkDivider : AppTheme.lightDivider,
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  NavigationHelper.push(context, const SettingsScreen());
+                },
+              ),
+              ListTile(
+                leading: const Icon(
+                  CupertinoIcons.arrow_right_square,
+                  color: Colors.red,
+                ),
+                title: Text(AppLocalizations.of(context)!.logout),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: Text(AppLocalizations.of(context)!.logout),
+                      content: Text(
+                        AppLocalizations.of(context)!.logoutConfirmation,
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: Text(AppLocalizations.of(context)!.cancel),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: Text(
+                            AppLocalizations.of(context)!.logout,
+                            style: const TextStyle(color: Colors.red),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed == true) {
+                    await Provider.of<PlayerProvider>(
+                      context,
+                      listen: false,
+                    ).stop();
+                    await authProvider.logout();
+                  }
+                },
+              ),
+              const SizedBox(height: 32),
             ],
-            ListTile(
-              leading: Icon(
-                CupertinoIcons.gear_alt,
-                color: isDark ? Colors.white : Colors.black87,
-              ),
-              title: Text(AppLocalizations.of(context)!.settingsTitle),
-              trailing: Icon(
-                CupertinoIcons.chevron_forward,
-                size: 18,
-                color: isDark ? AppTheme.darkDivider : AppTheme.lightDivider,
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                NavigationHelper.push(context, const SettingsScreen());
-              },
-            ),
-            ListTile(
-              leading: const Icon(
-                CupertinoIcons.arrow_right_square,
-                color: Colors.red,
-              ),
-              title: Text(AppLocalizations.of(context)!.logout),
-              onTap: () async {
-                Navigator.pop(context);
-                await Provider.of<PlayerProvider>(context, listen: false).stop();
-                await authProvider.logout();
-              },
-            ),
-            const SizedBox(height: 32),
-          ],
-        ),
+          ),
         ),
       ),
     );

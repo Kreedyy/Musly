@@ -72,6 +72,7 @@ dependencies:
   flutter_chrome_cast: ^1.4.1
   dynamic_color: ^1.7.0
   connectivity_plus: ^7.0.0
+  countly_flutter: ^26.1.0
 
 dependency_overrides:
   ffi: ^2.1.0

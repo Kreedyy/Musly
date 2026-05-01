@@ -14,6 +14,8 @@ migrate_working_dir/
 musly-1.0.4-setup.exe
 .claude/
 /discord_sdk_temp
+# lib/services/analytics_service.dart
+.env
 
 # IntelliJ related
 *.iml

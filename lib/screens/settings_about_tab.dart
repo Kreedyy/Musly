@@ -3,9 +3,35 @@ import 'package:flutter/cupertino.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
+import '../services/analytics_service.dart';
+import '../widgets/support_dialog.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class SettingsAboutTab extends StatelessWidget {
+class SettingsAboutTab extends StatefulWidget {
   const SettingsAboutTab({super.key});
+
+  @override
+  State<SettingsAboutTab> createState() => _SettingsAboutTabState();
+}
+
+class _SettingsAboutTabState extends State<SettingsAboutTab> {
+  bool _analyticsEnabled = true;
+  bool _hasRated = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final analytics = AnalyticsService();
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _analyticsEnabled = analytics.isEnabled;
+      _hasRated = prefs.getBool('has_rated_app') ?? false;
+    });
+  }
 
   bool _isDark(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark;
@@ -73,6 +99,73 @@ class SettingsAboutTab extends StatelessWidget {
               icon: Icons.chat_bubble_rounded,
               title: AppLocalizations.of(context)!.aboutLinkDiscord,
               url: 'https://discord.gg/k9FqpbT65M',
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        _buildSection(
+          context,
+          title: 'Analytics & Privacy',
+          children: [
+            SwitchListTile(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 4,
+              ),
+              secondary: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF34C759), Color(0xFF30D158)],
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  CupertinoIcons.chart_bar,
+                  color: Colors.white,
+                  size: 18,
+                ),
+              ),
+              title: const Text(
+                'Anonymous Analytics',
+                style: TextStyle(fontSize: 16),
+              ),
+              subtitle: const Text(
+                'Help improve Musly with anonymous crash reports and usage stats',
+                style: TextStyle(fontSize: 12),
+              ),
+              value: _analyticsEnabled,
+              onChanged: (value) async {
+                await AnalyticsService().setEnabled(value);
+                setState(() => _analyticsEnabled = value);
+              },
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        _buildSection(
+          context,
+          title: 'Support',
+          children: [
+            _buildActionTile(
+              context,
+              icon: CupertinoIcons.star_fill,
+              iconColor: const Color(0xFFFFCC00),
+              title: _hasRated ? 'Thanks for Rating!' : 'Rate Musly',
+              subtitle: _hasRated
+                  ? 'You\'ve already rated the app'
+                  : 'Share your feedback',
+              onTap: _hasRated ? null : () => _showRatingDialog(context),
+            ),
+            _buildDivider(context),
+            _buildActionTile(
+              context,
+              icon: CupertinoIcons.heart_fill,
+              iconColor: const Color(0xFFFF2D55),
+              title: 'Support Musly',
+              subtitle: 'Join Discord or donate',
+              onTap: () => _showSupportDialog(context),
             ),
           ],
         ),
@@ -173,7 +266,10 @@ class SettingsAboutTab extends StatelessWidget {
         ),
         child: const Icon(Icons.code_rounded, color: Colors.white, size: 18),
       ),
-      title: Text(AppLocalizations.of(context)!.aboutMadeBy, style: const TextStyle(fontSize: 16)),
+      title: Text(
+        AppLocalizations.of(context)!.aboutMadeBy,
+        style: const TextStyle(fontSize: 16),
+      ),
       subtitle: Text(
         AppLocalizations.of(context)!.aboutGitHub,
         style: const TextStyle(fontSize: 13),
@@ -198,7 +294,11 @@ class SettingsAboutTab extends StatelessWidget {
           color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Icon(icon, color: Theme.of(context).colorScheme.primary, size: 18),
+        child: Icon(
+          icon,
+          color: Theme.of(context).colorScheme.primary,
+          size: 18,
+        ),
       ),
       title: Text(title, style: const TextStyle(fontSize: 16)),
       trailing: Icon(
@@ -221,5 +321,133 @@ class SettingsAboutTab extends StatelessWidget {
     } catch (e) {
       debugPrint('Error opening URL: $e');
     }
+  }
+
+  void _showSupportDialog(BuildContext context) {
+    showDialog(context: context, builder: (context) => const SupportDialog());
+  }
+
+  void _showRatingDialog(BuildContext context) async {
+    final ratingController = TextEditingController();
+    int selectedRating = 5;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Rate Musly'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('How would you rate your experience?'),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(5, (index) {
+                    final starIndex = index + 1;
+                    return IconButton(
+                      icon: Icon(
+                        starIndex <= selectedRating
+                            ? CupertinoIcons.star_fill
+                            : CupertinoIcons.star,
+                        color: const Color(0xFFFFCC00),
+                      ),
+                      onPressed: () {
+                        setDialogState(() => selectedRating = starIndex);
+                      },
+                    );
+                  }),
+                ),
+                const SizedBox(height: 16),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 100),
+                  child: TextField(
+                    controller: ratingController,
+                    decoration: const InputDecoration(
+                      hintText: 'Optional feedback...',
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: null,
+                    expands: true,
+                    textAlignVertical: TextAlignVertical.top,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Submit'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result == true) {
+      await AnalyticsService().recordRating(
+        selectedRating,
+        ratingController.text,
+      );
+      await AnalyticsService().markAppAsRated();
+      setState(() => _hasRated = true);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Thank you for your feedback!')),
+        );
+      }
+    }
+    ratingController.dispose();
+  }
+
+  Widget _buildActionTile(
+    BuildContext context, {
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    VoidCallback? onTap,
+  }) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      leading: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [iconColor, iconColor.withValues(alpha: 0.7)],
+          ),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, color: Colors.white, size: 18),
+      ),
+      title: Text(title, style: const TextStyle(fontSize: 16)),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(
+          fontSize: 12,
+          color: _isDark(context)
+              ? AppTheme.darkSecondaryText
+              : AppTheme.lightSecondaryText,
+        ),
+      ),
+      trailing: onTap != null
+          ? Icon(
+              CupertinoIcons.chevron_forward,
+              size: 18,
+              color: _isDark(context)
+                  ? AppTheme.darkSecondaryText
+                  : AppTheme.lightSecondaryText,
+            )
+          : null,
+      onTap: onTap,
+    );
   }
 }

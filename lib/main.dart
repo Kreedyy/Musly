@@ -12,11 +12,33 @@ import 'services/services.dart';
 import 'services/audio_handler.dart';
 import 'services/transcoding_service.dart';
 import 'services/local_music_service.dart';
+import 'services/analytics_service.dart';
+import 'widgets/support_dialog.dart';
 import 'providers/providers.dart';
 import 'screens/screens.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'theme/theme.dart';
 import 'utils/image_cache.dart';
+
+// Global instance for analytics (to be shown after auth)
+AnalyticsService? _analyticsServiceInstance;
+
+/// Shows the support dialog if needed (Discord/Donation)
+Future<void> _showSupportDialogIfNeeded() async {
+  if (await SupportDialog.shouldShow()) {
+    // Small delay to ensure UI is fully loaded
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (navigatorKey.currentContext != null) {
+      showDialog(
+        context: navigatorKey.currentContext!,
+        builder: (context) => const SupportDialog(),
+        barrierDismissible: false,
+      );
+    }
+  }
+}
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -74,7 +96,16 @@ void main() async {
   jukeboxService.initialize().catchError((e) {
     debugPrint('Failed to initialize jukebox service: $e');
   });
-  
+
+  // Initialize analytics service (privacy-first, anonymous)
+  final analyticsService = AnalyticsService();
+  analyticsService.initialize().catchError((e) {
+    debugPrint('Failed to initialize analytics: $e');
+  });
+
+  // Store reference to show support dialog after auth
+  _analyticsServiceInstance = analyticsService;
+
   try {
     await PlayerUiSettingsService().initialize();
   } catch (e) {
@@ -86,39 +117,37 @@ void main() async {
   final audioHandler = await initAudioService();
 
   final Widget appWithProviders = MultiProvider(
-        providers: [
-        Provider<StorageService>.value(value: storageService),
-        Provider<SubsonicService>.value(value: subsonicService),
-        ChangeNotifierProvider<RecommendationService>.value(
-          value: recommendationService,
+    providers: [
+      Provider<StorageService>.value(value: storageService),
+      Provider<SubsonicService>.value(value: subsonicService),
+      ChangeNotifierProvider<RecommendationService>.value(
+        value: recommendationService,
+      ),
+      ChangeNotifierProvider<TranscodingService>(
+        create: (_) => TranscodingService(),
+      ),
+      ChangeNotifierProvider<LocalMusicService>.value(value: localMusicService),
+      ChangeNotifierProvider(
+        create: (_) => AuthProvider(subsonicService, storageService),
+      ),
+      ChangeNotifierProvider<CastService>.value(value: castService),
+      ChangeNotifierProvider<LocaleService>.value(value: localeService),
+      ChangeNotifierProvider<ThemeService>.value(value: themeService),
+      ChangeNotifierProvider<UpnpService>.value(value: upnpService),
+      ChangeNotifierProvider<JukeboxService>.value(value: jukeboxService),
+      ChangeNotifierProvider(
+        create: (_) => PlayerProvider(
+          subsonicService,
+          storageService,
+          castService,
+          upnpService,
+          audioHandler,
         ),
-        ChangeNotifierProvider<TranscodingService>(
-          create: (_) => TranscodingService(),
-        ),
-        ChangeNotifierProvider<LocalMusicService>.value(
-          value: localMusicService,
-        ),
-        ChangeNotifierProvider(
-          create: (_) => AuthProvider(subsonicService, storageService),
-        ),
-        ChangeNotifierProvider<CastService>.value(value: castService),
-        ChangeNotifierProvider<LocaleService>.value(value: localeService),
-        ChangeNotifierProvider<ThemeService>.value(value: themeService),
-        ChangeNotifierProvider<UpnpService>.value(value: upnpService),
-        ChangeNotifierProvider<JukeboxService>.value(value: jukeboxService),
-        ChangeNotifierProvider(
-          create: (_) => PlayerProvider(
-            subsonicService,
-            storageService,
-            castService,
-            upnpService,
-            audioHandler,
-          ),
-        ),
-        ChangeNotifierProvider(create: (_) => LibraryProvider(subsonicService)),
-      ],
-      child: const MuslyApp(),
-    );
+      ),
+      ChangeNotifierProvider(create: (_) => LibraryProvider(subsonicService)),
+    ],
+    child: const MuslyApp(),
+  );
 
   // AudioServiceWidget is only needed on iOS where AudioService.init() was
   // called.  On Android/desktop wrapping with it would break the app.
@@ -145,7 +174,6 @@ class MuslyApp extends StatelessWidget {
         final ThemeData dark;
 
         if (lightDynamic != null && darkDynamic != null) {
-          
           final harmonisedLight = lightDynamic.harmonized();
           final harmonisedDark = darkDynamic.harmonized();
           light = AppTheme.lightThemeFromScheme(harmonisedLight);
@@ -161,12 +189,14 @@ class MuslyApp extends StatelessWidget {
           theme: light,
           darkTheme: dark,
           themeMode: themeService.themeMode,
+          navigatorKey: navigatorKey,
 
           locale: localeService.currentLocale,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
 
           home: const AuthWrapper(),
+          navigatorObservers: [AnalyticsNavigatorObserver()],
         );
       },
     );
@@ -189,21 +219,23 @@ class _AuthWrapperState extends State<AuthWrapper> {
       case AuthState.unknown:
         return Scaffold(
           backgroundColor: Colors.black,
-          body: Center(
-            child: const CircularProgressIndicator(),
-          ),
+          body: Center(child: const CircularProgressIndicator()),
         );
       case AuthState.authenticated:
+        // Show support dialog after successful login (with delay)
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          await _showSupportDialogIfNeeded();
+        });
         return const MainScreen();
       case AuthState.offlineMode:
-        
         return const MainScreen(isOfflineMode: true);
       case AuthState.serverUnreachable:
         return _ServerUnreachableScreen(
           hasOfflineContent: authProvider.hasOfflineContent,
           onEnterOfflineMode: () => authProvider.enterOfflineMode(),
           onDisconnect: () => authProvider.disconnect(),
-        );      case AuthState.authenticating:
+        );
+      case AuthState.authenticating:
         return const Scaffold(
           backgroundColor: Colors.black,
           body: Center(child: CircularProgressIndicator()),
@@ -241,7 +273,10 @@ class _ServerUnreachableScreen extends StatelessWidget {
               const SizedBox(height: 24),
               Text(
                 AppLocalizations.of(context)!.serverUnreachableTitle,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
