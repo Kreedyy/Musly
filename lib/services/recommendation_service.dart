@@ -17,6 +17,9 @@ class RecommendationService extends ChangeNotifier {
   Map<String, int> _skipCounts = {};
   Map<int, Map<String, double>> _timePatterns = {};
   List<String> _recentlyPlayed = [];
+  Set<String> _starredSongs = {};
+  Map<String, double> _artistRatingAffinity = {};
+  Map<String, double> _genreRatingAffinity = {};
 
   bool get enabled => _enabled;
   Map<String, SongProfile> get profiles => _profiles;
@@ -37,6 +40,9 @@ class RecommendationService extends ChangeNotifier {
         _artistAffinity = Map<String, double>.from(data['artists'] ?? {});
         _genreAffinity = Map<String, double>.from(data['genres'] ?? {});
         _recentlyPlayed = List<String>.from(data['recent'] ?? []);
+        _starredSongs = Set<String>.from(data['starred'] ?? []);
+        _artistRatingAffinity = Map<String, double>.from(data['artistRatings'] ?? {});
+        _genreRatingAffinity = Map<String, double>.from(data['genreRatings'] ?? {});
       } catch (e) {
         debugPrint('Error loading data: $e');
       }
@@ -149,6 +155,52 @@ class RecommendationService extends ChangeNotifier {
     await _saveData();
   }
 
+  Future<void> trackSongRating(Song song, int rating) async {
+    if (!_enabled || rating < 1 || rating > 5) return;
+
+    final profile = _profiles[song.id];
+    if (profile != null) {
+      profile.userRating = rating;
+    }
+
+    final weight = rating / 5.0;
+
+    if (song.artist != null) {
+      _artistRatingAffinity[song.artist!] =
+          (_artistRatingAffinity[song.artist!] ?? 0) + weight * 2.0;
+    }
+
+    if (song.genre != null) {
+      _genreRatingAffinity[song.genre!] =
+          (_genreRatingAffinity[song.genre!] ?? 0) + weight * 1.5;
+    }
+
+    await _saveData();
+    notifyListeners();
+  }
+
+  Future<void> trackStarred(Song song, bool starred) async {
+    if (!_enabled) return;
+
+    if (starred) {
+      _starredSongs.add(song.id);
+
+      if (song.artist != null) {
+        _artistAffinity[song.artist!] =
+            (_artistAffinity[song.artist!] ?? 0) + 2.0;
+      }
+      if (song.genre != null) {
+        _genreAffinity[song.genre!] =
+            (_genreAffinity[song.genre!] ?? 0) + 1.5;
+      }
+    } else {
+      _starredSongs.remove(song.id);
+    }
+
+    await _saveData();
+    notifyListeners();
+  }
+
   double calculateSongScore(Song song, {int? currentHour}) {
     if (!_enabled) return 0.0;
 
@@ -168,12 +220,35 @@ class RecommendationService extends ChangeNotifier {
       score += (genreScore / maxG) * 0.25;
     }
 
+    if (_artistRatingAffinity.isNotEmpty && song.artist != null) {
+      final maxAr = _artistRatingAffinity.values.reduce(max);
+      final artistRatingScore = _artistRatingAffinity[song.artist] ?? 0;
+      score += (artistRatingScore / maxAr) * 0.15;
+    }
+
+    if (_genreRatingAffinity.isNotEmpty && song.genre != null) {
+      final maxGr = _genreRatingAffinity.values.reduce(max);
+      final genreRatingScore = _genreRatingAffinity[song.genre] ?? 0;
+      score += (genreRatingScore / maxGr) * 0.10;
+    }
+
     if (profile != null) {
       score += profile.completionRate * 0.15;
       score += profile.getHourPreference(hour) * 0.1;
       if (profile.playCount > 0) {
         score += min(profile.playCount / 10.0, 1.0) * 0.1;
       }
+      if (profile.userRating != null) {
+        score += (profile.userRating! / 5.0) * 0.2;
+      }
+    }
+
+    if (song.userRating != null) {
+      score += (song.userRating! / 5.0) * 0.15;
+    }
+
+    if (_starredSongs.contains(song.id) || song.starred == true) {
+      score += 0.25;
     }
 
     final skips = _skipCounts[song.id] ?? 0;
@@ -342,9 +417,15 @@ class RecommendationService extends ChangeNotifier {
   Map<String, dynamic> getListeningStats() {
     int totalPlays = 0;
     int totalDuration = 0;
+    int ratedSongs = 0;
+    int totalRating = 0;
     for (final p in _profiles.values) {
       totalPlays += p.playCount;
       totalDuration += p.totalListenTime;
+      if (p.userRating != null) {
+        ratedSongs++;
+        totalRating += p.userRating!;
+      }
     }
 
     return {
@@ -353,6 +434,9 @@ class RecommendationService extends ChangeNotifier {
       'uniqueSongs': _profiles.length,
       'uniqueArtists': _artistAffinity.length,
       'uniqueGenres': _genreAffinity.length,
+      'starredSongs': _starredSongs.length,
+      'ratedSongs': ratedSongs,
+      'averageRating': ratedSongs > 0 ? totalRating / ratedSongs : 0.0,
       'topArtists': _getTopArtists(5),
       'topGenres': _getTopGenres(5),
     };
@@ -365,6 +449,9 @@ class RecommendationService extends ChangeNotifier {
     _skipCounts.clear();
     _timePatterns.clear();
     _recentlyPlayed.clear();
+    _starredSongs.clear();
+    _artistRatingAffinity.clear();
+    _genreRatingAffinity.clear();
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_dataKey);
@@ -383,6 +470,9 @@ class RecommendationService extends ChangeNotifier {
         'artists': _artistAffinity,
         'genres': _genreAffinity,
         'recent': _recentlyPlayed,
+        'starred': _starredSongs.toList(),
+        'artistRatings': _artistRatingAffinity,
+        'genreRatings': _genreRatingAffinity,
       };
       await prefs.setString(_dataKey, json.encode(data));
       await prefs.setString(_skipKey, json.encode(_skipCounts));
@@ -408,6 +498,7 @@ class SongProfile {
   int skipCount = 0;
   int totalListenTime = 0;
   int completedPlays = 0;
+  int? userRating;
   Map<int, int> hourlyPlays = {};
   DateTime lastPlayed = DateTime.now();
 
@@ -454,6 +545,7 @@ class SongProfile {
     'skipCount': skipCount,
     'totalListenTime': totalListenTime,
     'completedPlays': completedPlays,
+    'userRating': userRating,
     'hourlyPlays': hourlyPlays.map((k, v) => MapEntry(k.toString(), v)),
     'lastPlayed': lastPlayed.millisecondsSinceEpoch,
   };
@@ -472,6 +564,7 @@ class SongProfile {
     p.skipCount = json['skipCount'] ?? 0;
     p.totalListenTime = json['totalListenTime'] ?? 0;
     p.completedPlays = json['completedPlays'] ?? 0;
+    p.userRating = json['userRating'] as int?;
     p.hourlyPlays =
         (json['hourlyPlays'] as Map<String, dynamic>?)?.map(
           (k, v) => MapEntry(int.parse(k), v as int),

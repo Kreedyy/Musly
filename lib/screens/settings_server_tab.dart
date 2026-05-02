@@ -314,21 +314,23 @@ class _SettingsServerTabState extends State<SettingsServerTab> {
         style: const TextStyle(fontSize: 16, color: Color(0xFFFF3B30)),
       ),
       onTap: () {
+        final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
         showDialog(
           context: context,
-          builder: (context) => AlertDialog(
+          builder: (dialogContext) => AlertDialog(
             title: Text(AppLocalizations.of(context)!.logout),
             content: Text(AppLocalizations.of(context)!.logoutConfirmation),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pop(dialogContext),
                 child: Text(AppLocalizations.of(context)!.cancel),
               ),
               TextButton(
                 onPressed: () {
-                  Navigator.pop(context);
-                  Provider.of<PlayerProvider>(context, listen: false).stop();
-                  Provider.of<AuthProvider>(context, listen: false).logout();
+                  Navigator.pop(dialogContext);
+                  playerProvider.stop();
+                  authProvider.logout();
                 },
                 child: Text(
                   AppLocalizations.of(context)!.logout,
