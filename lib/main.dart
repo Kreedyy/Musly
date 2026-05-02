@@ -14,6 +14,7 @@ import 'services/transcoding_service.dart';
 import 'services/local_music_service.dart';
 import 'services/analytics_service.dart';
 import 'widgets/support_dialog.dart';
+import 'widgets/privacy_policy_dialog.dart';
 import 'providers/providers.dart';
 import 'screens/screens.dart';
 import 'package:dynamic_color/dynamic_color.dart';
@@ -22,6 +23,27 @@ import 'utils/image_cache.dart';
 
 // Global instance for analytics (to be shown after auth)
 AnalyticsService? _analyticsServiceInstance;
+
+/// Shows the privacy policy dialog on first launch
+Future<void> _showPrivacyPolicyIfNeeded() async {
+  if (await PrivacyPolicyDialog.shouldShow()) {
+    // Small delay to ensure UI is fully loaded
+    await Future.delayed(const Duration(milliseconds: 300));
+    if (navigatorKey.currentContext != null) {
+      final result = await showDialog<bool>(
+        context: navigatorKey.currentContext!,
+        builder: (context) => const PrivacyPolicyDialog(),
+        barrierDismissible: false,
+      );
+
+      // If user declined, mark as accepted anyway to not show again
+      // but we could handle this differently if needed
+      if (result == false) {
+        await PrivacyPolicyDialog.markAccepted();
+      }
+    }
+  }
+}
 
 /// Shows the support dialog if needed (Discord/Donation)
 Future<void> _showSupportDialogIfNeeded() async {
@@ -222,8 +244,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
           body: Center(child: const CircularProgressIndicator()),
         );
       case AuthState.authenticated:
-        // Show support dialog after successful login (with delay)
+        // Show privacy policy first, then support dialog after successful login
         WidgetsBinding.instance.addPostFrameCallback((_) async {
+          await _showPrivacyPolicyIfNeeded();
           await _showSupportDialogIfNeeded();
         });
         return const MainScreen();

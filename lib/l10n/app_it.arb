@@ -1748,5 +1748,28 @@
   "aboutLinkDiscord": "Unisciti Alla Community Di Discord",
   "@aboutLinkDiscord": {
     "description": "Link tile title for the Discord server"
-  }
+  },
+
+  "@_SETTINGS_ANALYTICS": {},
+  "sectionAnalyticsPrivacy": "Analytics e Privacy",
+  "@sectionAnalyticsPrivacy": { "description": "Analytics and Privacy section header" },
+  "anonymousAnalytics": "Analytics Anonime",
+  "@anonymousAnalytics": { "description": "Title for anonymous analytics toggle" },
+  "anonymousAnalyticsSubtitle": "Aiuta a migliorare Musly con segnalazioni anonime di crash e statistiche d'uso",
+  "@anonymousAnalyticsSubtitle": { "description": "Subtitle explaining anonymous analytics" },
+  "deviceId": "ID Dispositivo",
+  "@deviceId": { "description": "Title for device ID row" },
+  "deviceIdAnonymous": "ID Anonimo: {id}",
+  "@deviceIdAnonymous": {
+    "description": "Shows the anonymous device ID",
+    "placeholders": {
+      "id": { "type": "String" }
+    }
+  },
+  "deviceIdDisabled": "Abilita le analytics per vedere il tuo ID dispositivo anonimo",
+  "@deviceIdDisabled": { "description": "Shown when analytics is disabled" },
+  "aboutDeviceId": "Informazioni ID Dispositivo",
+  "@aboutDeviceId": { "description": "Title for device ID explanation" },
+  "aboutDeviceIdSubtitle": "Questo è un identificatore anonimo generato dall'app. Non può essere collegato alla tua identità personale ed è usato solo per le analytics.",
+  "@aboutDeviceIdSubtitle": { "description": "Explanation of what device ID is" }
 }
