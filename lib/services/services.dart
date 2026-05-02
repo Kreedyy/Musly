@@ -1,5 +1,6 @@
 export 'subsonic_service.dart';
 export 'jellyfin_service.dart';
+export 'youtube_service.dart';
 export 'storage_service.dart';
 export 'android_auto_service.dart';
 export 'android_system_service.dart';
@@ -18,3 +19,5 @@ export 'update_service.dart';
 export 'upnp_service.dart';
 export 'jukebox_service.dart';
 export 'theme_service.dart';
+export 'lyrics_manager.dart';
+export 'lock_screen_lyrics_service.dart';

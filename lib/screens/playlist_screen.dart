@@ -419,11 +419,15 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
                   _playlist!.name,
                   style: theme.textTheme.headlineMedium,
                   textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '${_playlist!.songs?.length ?? 0} songs • ${_playlist!.formattedDuration}',
                   style: theme.textTheme.bodySmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 16),
                 Row(

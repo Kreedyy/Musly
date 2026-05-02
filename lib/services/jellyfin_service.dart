@@ -134,12 +134,18 @@ class JellyfinService {
     final params = StringBuffer(
       '$_baseUrl/Audio/$songId/universal'
       '?audioCodec=aac,mp3,flac,opus,ogg'
+      '&container=opus,mp3,aac,m4a,m4b,mp4,flac,webma,webm,wav,ogg'
       '&transcodingContainer=mp4'
       '&transcodingProtocol=http'
-      '&maxStreamingBitrate=${(maxBitRate ?? 0) * 1000}'
+      '&enableDirectPlay=true'
+      '&enableDirectStream=true'
+      '&enableTranscoding=true'
       '&userId=${_userId ?? ''}'
       '&deviceId=$_deviceId',
     );
+    if (maxBitRate != null && maxBitRate > 0) {
+      params.write('&maxStreamingBitrate=${maxBitRate * 1000}');
+    }
     if (_token != null) params.write('&api_key=$_token');
     return params.toString();
   }
@@ -699,6 +705,42 @@ class JellyfinService {
       await _delete('/Playlists/$playlistId/Items?EntryIds=$entryId');
     } catch (e) {
       debugPrint('[Jellyfin] removeSongFromPlaylist error: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>?> getLyrics(String songId) async {
+    try {
+      final data = await _get('/Audio/$songId/Lyrics');
+      final rawLines = data['Lyrics'] as List<dynamic>?;
+      if (rawLines == null || rawLines.isEmpty) return null;
+
+      final lines = rawLines
+          .map<Map<String, dynamic>>((line) {
+            final ticks = line['Start'] as int? ?? 0;
+            return {
+              'start': ticks ~/ 10000,
+              'value': line['Text']?.toString() ?? '',
+            };
+          })
+          .where((l) => (l['value'] as String).isNotEmpty)
+          .toList();
+
+      if (lines.isEmpty) return null;
+
+      final isSynced = lines.any((l) => (l['start'] as int) > 0);
+      if (isSynced) {
+        return {
+          'structuredLyrics': [
+            {'synced': true, 'line': lines},
+          ],
+        };
+      } else {
+        final text = lines.map((l) => l['value'] as String).join('\n');
+        return {'value': text};
+      }
+    } catch (e) {
+      debugPrint('[Jellyfin] getLyrics error: $e');
+      return null;
     }
   }
 }

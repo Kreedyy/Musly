@@ -153,6 +153,7 @@ class _CompactLyricsViewState extends State<CompactLyricsView> {
           await subsonicService.getLyrics(
             artist: _song.artist,
             title: _song.title,
+            id: _song.id,
           );
 
       if (plainData != null) {
@@ -187,9 +188,9 @@ class _CompactLyricsViewState extends State<CompactLyricsView> {
       _lyrics = lyrics;
       _isLoading = false;
     });
-    _lyricsController.loadLines(lyrics.lines);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      _lyricsController.loadLines(lyrics.lines);
       final pos = Provider.of<PlayerProvider>(context, listen: false).position;
       _lyricsController.setPosition(pos);
     });

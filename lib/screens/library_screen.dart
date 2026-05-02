@@ -743,6 +743,8 @@ class _SpotifyLibraryTile extends StatelessWidget {
                       fontWeight: FontWeight.w500,
                       fontSize: 15,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -751,6 +753,8 @@ class _SpotifyLibraryTile extends StatelessWidget {
                       color: isDark ? Colors.white60 : Colors.black54,
                       fontSize: 13,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),

@@ -14,5 +14,8 @@ class MainActivity : FlutterFragmentActivity() {
         flutterEngine.plugins.add(BluetoothAvrcpPlugin)
         
         flutterEngine.plugins.add(SamsungIntegrationPlugin)
+        
+        // Register lyrics plugin for lock screen lyrics support
+        LyricsPlugin.registerWith(flutterEngine)
     }
 }

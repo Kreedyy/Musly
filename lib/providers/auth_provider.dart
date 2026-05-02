@@ -141,6 +141,11 @@ class AuthProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
 
+    // YouTube Music: no server URL / credentials required
+    if (serverFamily == 'youtube') {
+      serverUrl = 'https://music.youtube.com';
+    }
+
     final isJellyfin = serverFamily == 'jellyfin';
     String? jellyfinToken;
     String? jellyfinUserId;

@@ -22,6 +22,7 @@ import '../services/storage_service.dart';
 import '../services/cast_service.dart';
 import '../services/upnp_service.dart';
 import '../services/audio_handler.dart';
+import '../services/lock_screen_lyrics_service.dart';
 import '../providers/library_provider.dart';
 
 enum RepeatMode { off, all, one }
@@ -43,6 +44,7 @@ class PlayerProvider extends ChangeNotifier {
   late final DiscordRpcService _discordRpcService;
   final CastService _castService;
   late final UpnpService _upnpService;
+  final LockScreenLyricsService _lyricsService = LockScreenLyricsService();
   LibraryProvider? _libraryProvider;
   RecommendationService? _recommendationService;
 
@@ -76,7 +78,9 @@ class PlayerProvider extends ChangeNotifier {
   DateTime? _sleepTimerEnd;
   bool _sleepTimerEndCurrentSong = false;
   bool _sleepTimerFadeOut = false;
+  int _sleepTimerFadeDurationSeconds = 30;
   Timer? _sleepTimerFadeTimer;
+  Timer? _sleepTimerFadePeriodicTimer;
 
   double _playbackSpeed = 1.0;
 
@@ -97,6 +101,7 @@ class PlayerProvider extends ChangeNotifier {
     _initializeSystemServices();
     _initializeAutoDj();
     _wireAudioHandlerCallbacks();
+    _initializeLyricsService();
     
     if (!kIsWeb &&
         (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
@@ -127,10 +132,15 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   AutoDjService get autoDjService => _autoDjService;
+  LockScreenLyricsService get lyricsService => _lyricsService;
 
   Future<void> _initializeAutoDj() async {
     await _autoDjService.initialize();
     _autoDjService.setServices(_subsonicService, _recommendationService);
+  }
+
+  Future<void> _initializeLyricsService() async {
+    await _lyricsService.initialize();
   }
 
   Future<void> _initializeSystemServices() async {
@@ -754,6 +764,7 @@ class PlayerProvider extends ChangeNotifier {
   bool get hasSleepTimer => _sleepTimer != null;
   bool get sleepTimerEndCurrentSong => _sleepTimerEndCurrentSong;
   bool get sleepTimerFadeOut => _sleepTimerFadeOut;
+  int get sleepTimerFadeDurationSeconds => _sleepTimerFadeDurationSeconds;
 
   Duration? get sleepTimerRemaining {
     if (_sleepTimerEnd == null) return null;
@@ -765,23 +776,27 @@ class PlayerProvider extends ChangeNotifier {
     Duration duration, {
     bool endCurrentSong = false,
     bool fadeOut = false,
+    int fadeDurationSeconds = 30,
   }) {
     _sleepTimer?.cancel();
     _sleepTimerFadeTimer?.cancel();
+    _sleepTimerFadePeriodicTimer?.cancel();
+    _sleepTimerFadePeriodicTimer = null;
     _sleepTimer = null;
     _sleepTimerEnd = null;
     _sleepTimerEndCurrentSong = endCurrentSong;
     _sleepTimerFadeOut = fadeOut;
+    _sleepTimerFadeDurationSeconds = fadeDurationSeconds;
 
     if (duration > Duration.zero) {
       _sleepTimerEnd = DateTime.now().add(duration);
 
       if (fadeOut) {
-        final fadeStart = duration - const Duration(seconds: 30);
+        final fadeStart = duration - Duration(seconds: fadeDurationSeconds);
         if (fadeStart > Duration.zero) {
-          _sleepTimerFadeTimer = Timer(fadeStart, _startFadeOut);
+          _sleepTimerFadeTimer = Timer(fadeStart, () => _startFadeOut(fadeDurationSeconds));
         } else {
-          _startFadeOut();
+          _startFadeOut(fadeDurationSeconds);
         }
       }
 
@@ -799,25 +814,32 @@ class PlayerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _startFadeOut() {
-    const steps = 30;
+  void _startFadeOut([int fadeDurationSeconds = 30]) {
+    _sleepTimerFadePeriodicTimer?.cancel();
+    final steps = fadeDurationSeconds.clamp(5, 300);
     const stepDuration = Duration(seconds: 1);
     final originalVolume = _volume;
     int step = 0;
-    Timer.periodic(stepDuration, (t) {
+    _sleepTimerFadePeriodicTimer = Timer.periodic(stepDuration, (t) {
       step++;
       final newVolume = originalVolume * (1.0 - step / steps);
       _audioPlayer.setVolume(newVolume.clamp(0.0, 1.0));
-      if (step >= steps) t.cancel();
+      if (step >= steps) {
+        t.cancel();
+        _sleepTimerFadePeriodicTimer = null;
+      }
     });
   }
 
   void _doSleepTimerStop() {
+    _sleepTimerFadePeriodicTimer?.cancel();
+    _sleepTimerFadePeriodicTimer = null;
     _audioPlayer.setVolume(_volume);
     pause();
     _sleepTimer = null;
     _sleepTimerEnd = null;
     _sleepTimerFadeOut = false;
+    _sleepTimerFadeDurationSeconds = 30;
     _sleepTimerEndCurrentSong = false;
     notifyListeners();
   }
@@ -1010,12 +1032,22 @@ class PlayerProvider extends ChangeNotifier {
 
       await _refreshArtworkUrl();
 
+      // Load lyrics for lock screen sync
+      await _loadAndSyncLyrics(song);
+      
+      // Update song info for iOS Live Activity
+      await _lyricsService.updateSongInfo(
+        title: song.title,
+        artist: song.artist ?? 'Unknown Artist',
+        artworkUrl: _resolvedArtworkUrl ?? song.coverArt,
+      );
+
       if (_castService.isConnected) {
         if (_audioPlayer.playing) await _audioPlayer.stop();
 
         final playUrl = song.isLocal == true
             ? Uri.file(song.path!).toString()
-            : _subsonicService.getStreamUrl(song.id);
+            : await _subsonicService.resolveStreamUrlAsync(song);
         final coverUrl = song.isLocal == true && song.coverArt != null
             ? song.coverArt!
             : _subsonicService.getCoverArtUrl(song.coverArt ?? song.id);
@@ -1045,7 +1077,7 @@ class PlayerProvider extends ChangeNotifier {
 
         final playUrl = song.isLocal == true && song.path != null
             ? Uri.file(song.path!).toString()
-            : _subsonicService.getStreamUrl(song.id);
+            : await _subsonicService.resolveStreamUrlAsync(song);
 
         try {
           // Resolve the MIME type so strict UPnP renderers (e.g. moode /
@@ -1078,22 +1110,43 @@ class PlayerProvider extends ChangeNotifier {
         _isPlaying = true;
       } else {
         _isRenderingRemotely = false;
-        final String playUrl;
-        if (song.isLocal == true && song.path != null) {
-          playUrl = Uri.file(song.path!).toString();
-        } else {
-          playUrl = _offlineService.getPlayableUrl(song, _subsonicService);
+        
+        // For YouTube, pre-fetch the manifest then hand a StreamAudioSource
+        // to just_audio so ExoPlayer never touches the YouTube URL directly.
+        final youtubeSource = song.isLocal != true
+            ? await _subsonicService.getYoutubeAudioSource(song)
+            : null;
+
+        Future<void> _setSource() async {
+          if (youtubeSource != null) {
+            await _audioPlayer.setAudioSource(youtubeSource);
+            return;
+          }
+          final String playUrl;
+          if (song.isLocal == true && song.path != null) {
+            playUrl = Uri.file(song.path!).toString();
+          } else {
+            final offlinePath = _offlineService.getLocalPath(song.id);
+            if (offlinePath != null) {
+              playUrl = 'file://$offlinePath';
+            } else {
+              playUrl = await _subsonicService.resolveStreamUrlAsync(song);
+            }
+          }
+          await _audioPlayer.setUrl(playUrl);
         }
 
         try {
-          await _audioPlayer.setUrl(playUrl);
+          await _setSource();
         } catch (e) {
-          if (!_hasPlayedOnce) {
+          // Android 16 / Media3 first-play workaround — not applicable to
+          // YouTube StreamAudioSource (proxy state must not be reset).
+          if (!_hasPlayedOnce && youtubeSource == null) {
             debugPrint(
               'First playback failed (Android 16 Media3 issue), retrying: $e',
             );
             await Future.delayed(const Duration(milliseconds: 100));
-            await _audioPlayer.setUrl(playUrl);
+            await _setSource();
             _hasPlayedOnce = true;
           } else {
             rethrow;
@@ -1197,8 +1250,78 @@ class PlayerProvider extends ChangeNotifier {
       _isPlayingRadio = false;
       _currentRadioStation = null;
       _isPlaying = false;
+      // Clear lyrics when stopping radio
+      _lyricsService.stopSync();
+      _lyricsService.loadLyrics(null);
       notifyListeners();
     }
+  }
+
+  /// Load and sync lyrics for the given song
+  Future<void> _loadAndSyncLyrics(Song song) async {
+    try {
+      // Stop any previous sync
+      _lyricsService.stopSync();
+      
+      // Fetch lyrics from Subsonic API
+      final lyricsResponse = await _subsonicService.getLyricsBySongId(song.id);
+      
+      if (lyricsResponse != null) {
+        // Extract lyrics content from response
+        // Subsonic returns lyrics in various formats
+        String? lyricsContent;
+        
+        if (lyricsResponse.containsKey('lyrics')) {
+          // Standard Subsonic format
+          lyricsContent = lyricsResponse['lyrics'] as String?;
+        } else if (lyricsResponse.containsKey('structuredLyrics')) {
+          // Jellyfin format - convert to LRC
+          final structured = lyricsResponse['structuredLyrics'] as List<dynamic>?;
+          if (structured != null && structured.isNotEmpty) {
+            lyricsContent = _convertStructuredToLrc(structured);
+          }
+        }
+        
+        if (lyricsContent != null && lyricsContent.isNotEmpty) {
+          // Load lyrics into the service
+          await _lyricsService.loadLyrics(lyricsContent);
+          
+          // Start syncing with position stream
+          _lyricsService.startSync(_audioPlayer.positionStream);
+          
+          debugPrint('[Lyrics] Loaded and started sync for "${song.title}"');
+        } else {
+          // No lyrics available - clear any existing
+          await _lyricsService.loadLyrics(null);
+          debugPrint('[Lyrics] No lyrics available for "${song.title}"');
+        }
+      } else {
+        // No lyrics available - clear any existing
+        await _lyricsService.loadLyrics(null);
+        debugPrint('[Lyrics] No lyrics available for "${song.title}"');
+      }
+    } catch (e) {
+      debugPrint('[Lyrics] Failed to load lyrics for "${song.title}": $e');
+      // Don't block playback if lyrics fail
+      await _lyricsService.loadLyrics(null);
+    }
+  }
+
+  /// Convert Jellyfin structured lyrics to LRC format
+  String _convertStructuredToLrc(List<dynamic> structured) {
+    final buffer = StringBuffer();
+    for (final line in structured) {
+      if (line is Map<String, dynamic>) {
+        final text = line['text'] as String? ?? '';
+        final startTicks = line['startTicks'] as int? ?? 0;
+        final startMs = startTicks ~/ 10000; // Convert to milliseconds
+        final minutes = startMs ~/ 60000;
+        final seconds = (startMs % 60000) ~/ 1000;
+        final centiseconds = (startMs % 1000) ~/ 10;
+        buffer.writeln('[$minutes:${seconds.toString().padLeft(2, '0')}.${centiseconds.toString().padLeft(2, '0')}]$text');
+      }
+    }
+    return buffer.toString();
   }
 
   void _updateSystemServicesForRadio(RadioStation station) {
@@ -1459,6 +1582,9 @@ class PlayerProvider extends ChangeNotifier {
     _currentIndex = -1;
     _currentSong = null;
     _discordRpcService.clearPresence();
+    // Clear lyrics when clearing queue
+    _lyricsService.stopSync();
+    _lyricsService.loadLyrics(null);
     _audioPlayer.stop();
     _isPlaying = false;
     _position = Duration.zero;
@@ -1627,6 +1753,7 @@ class PlayerProvider extends ChangeNotifier {
   void dispose() {
     _sleepTimer?.cancel();
     _sleepTimerFadeTimer?.cancel();
+    _sleepTimerFadePeriodicTimer?.cancel();
     _castService.removeListener(_onCastStateChanged);
     _upnpService.removeListener(_onUpnpStateChanged);
     if (_upnpService.onRendererLost == _onUpnpRendererLost) {
@@ -1638,6 +1765,9 @@ class PlayerProvider extends ChangeNotifier {
     _windowsService.dispose();
     _bluetoothService.dispose();
     _samsungService.dispose();
+    
+    // Dispose lyrics service
+    _lyricsService.dispose();
     
     _discordRpcService.shutdown();
     _playerStateSub?.cancel();

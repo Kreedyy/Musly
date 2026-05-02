@@ -21,8 +21,6 @@ import '../utils/navigation_helper.dart';
 import '../widgets/synced_lyrics_view.dart';
 import '../widgets/compact_lyrics_view.dart';
 import 'album_screen.dart';
-import 'artist_screen.dart';
-import '../widgets/cast_button.dart';
 import '../widgets/multi_artist_widget.dart';
 import '../widgets/album_artwork.dart' show isLocalFilePath;
 
@@ -1100,6 +1098,8 @@ class _PlayerHeader extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.5,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   Text(
                     albumName,
@@ -1126,12 +1126,14 @@ class _PlayerHeader extends StatelessWidget {
               if (showLyricsButton)
                 IconButton(
                   onPressed: onLyricsPressed,
+                  padding: const EdgeInsets.all(6),
+                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                   icon: Icon(
                     CupertinoIcons.music_note_list,
                     color: isLyricsActive
                         ? AppTheme.appleMusicRed
                         : Colors.white,
-                    size: 24,
+                    size: 22,
                   ),
                 ),
 
@@ -1141,6 +1143,8 @@ class _PlayerHeader extends StatelessWidget {
                   tooltip:
                       'Playback speed (${speed == 1.0 ? '1×' : '$speed×'})',
                   onPressed: () => _showSpeedDialog(context),
+                  padding: const EdgeInsets.all(6),
+                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                   icon: speed != 1.0
                       ? Text(
                           '$speed×',
@@ -1153,7 +1157,7 @@ class _PlayerHeader extends StatelessWidget {
                       : const Icon(
                           CupertinoIcons.speedometer,
                           color: Colors.white,
-                          size: 22,
+                          size: 20,
                         ),
                 ),
               ),
@@ -1162,23 +1166,26 @@ class _PlayerHeader extends StatelessWidget {
                 builder: (context, hasTimer, _) => IconButton(
                   tooltip: hasTimer ? 'Sleep timer active' : 'Sleep timer',
                   onPressed: () => _showSleepTimerDialog(context),
+                  padding: const EdgeInsets.all(6),
+                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                   icon: Icon(
                     CupertinoIcons.moon_zzz,
                     color: hasTimer ? AppTheme.appleMusicRed : Colors.white,
-                    size: 22,
+                    size: 20,
                   ),
                 ),
               ),
               IconButton(
                 onPressed: () => _showQueue(context),
+                padding: const EdgeInsets.all(6),
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                 icon: const Icon(
                   CupertinoIcons.list_bullet,
                   color: Colors.white,
-                  size: 24,
+                  size: 22,
                 ),
               ),
-              const SizedBox(width: 8),
-              const CastButton(),
+              const SizedBox(width: 4),
             ],
           ),
         ],
@@ -1270,10 +1277,12 @@ class _PlayerHeader extends StatelessWidget {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (sheetCtx) => StatefulBuilder(
+      builder: (sheetCtx) {
+        bool endCurrentSong = player.sleepTimerEndCurrentSong;
+        bool fadeOut = player.sleepTimerFadeOut;
+        int fadeOutSeconds = player.sleepTimerFadeDurationSeconds;
+        return StatefulBuilder(
         builder: (ctx, setSt) {
-          bool endCurrentSong = player.sleepTimerEndCurrentSong;
-          bool fadeOut = player.sleepTimerFadeOut;
           return Container(
             decoration: BoxDecoration(
               color: AppTheme.darkSurface,
@@ -1311,11 +1320,52 @@ class _PlayerHeader extends StatelessWidget {
                       'Fade out',
                       style: TextStyle(color: Colors.white),
                     ),
-                    subtitle: const Text(
-                      'Gradually lower volume in the last 30 s',
-                      style: TextStyle(color: Colors.white54, fontSize: 12),
+                    subtitle: Text(
+                      'Gradually lower volume in the last $fadeOutSeconds s',
+                      style: const TextStyle(color: Colors.white54, fontSize: 12),
                     ),
                     onChanged: (v) => setSt(() => fadeOut = v),
+                  ),
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOutCubic,
+                    child: fadeOut
+                        ? Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  CupertinoIcons.moon_zzz,
+                                  color: Colors.white54,
+                                  size: 16,
+                                ),
+                                Expanded(
+                                  child: Slider(
+                                    value: fadeOutSeconds.toDouble(),
+                                    min: 5,
+                                    max: 120,
+                                    divisions: 23,
+                                    activeColor: AppTheme.appleMusicRed,
+                                    label: '${fadeOutSeconds}s',
+                                    onChanged: (v) =>
+                                        setSt(() => fadeOutSeconds = v.round()),
+                                  ),
+                                ),
+                                SizedBox(
+                                  width: 40,
+                                  child: Text(
+                                    '${fadeOutSeconds}s',
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 12,
+                                    ),
+                                    textAlign: TextAlign.end,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : const SizedBox.shrink(),
                   ),
                   SwitchListTile(
                     value: endCurrentSong,
@@ -1343,6 +1393,7 @@ class _PlayerHeader extends StatelessWidget {
                           opt.$2,
                           endCurrentSong: endCurrentSong,
                           fadeOut: fadeOut,
+                          fadeDurationSeconds: fadeOutSeconds,
                         );
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -1368,6 +1419,7 @@ class _PlayerHeader extends StatelessWidget {
                         context,
                         endCurrentSong: endCurrentSong,
                         fadeOut: fadeOut,
+                        fadeOutSeconds: fadeOutSeconds,
                       );
                     },
                   ),
@@ -1392,7 +1444,8 @@ class _PlayerHeader extends StatelessWidget {
             ),
           );
         },
-      ),
+      );
+      },
     );
   }
 
@@ -1400,6 +1453,7 @@ class _PlayerHeader extends StatelessWidget {
     BuildContext context, {
     required bool endCurrentSong,
     required bool fadeOut,
+    int fadeOutSeconds = 30,
   }) {
     final player = context.read<PlayerProvider>();
     int minutes = 30;
@@ -1449,6 +1503,7 @@ class _PlayerHeader extends StatelessWidget {
                   Duration(minutes: minutes),
                   endCurrentSong: endCurrentSong,
                   fadeOut: fadeOut,
+                  fadeDurationSeconds: fadeOutSeconds,
                 );
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(

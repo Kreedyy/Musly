@@ -207,16 +207,14 @@ class _SearchScreenState extends State<SearchScreen> {
                       const SizedBox(height: 24),
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: 16),
-                        child: Row(
-                          children: [
-                            Text(
-                              AppLocalizations.of(context)!.albums,
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
+                        child: Text(
+                          AppLocalizations.of(context)!.albums,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -227,16 +225,14 @@ class _SearchScreenState extends State<SearchScreen> {
                       const SizedBox(height: 24),
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: 16),
-                        child: Row(
-                          children: [
-                            Text(
-                              AppLocalizations.of(context)!.songs,
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
+                        child: Text(
+                          AppLocalizations.of(context)!.songs,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       ...List.generate(5, (_) => const SongTileShimmer()),
@@ -643,6 +639,8 @@ class _CategoryCard extends StatelessWidget {
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),

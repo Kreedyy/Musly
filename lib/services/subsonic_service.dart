@@ -4,9 +4,11 @@ import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:uuid/uuid.dart';
 import '../models/models.dart';
 import 'jellyfin_service.dart';
+import 'youtube_service.dart';
 
 class PingResult {
   final bool success;
@@ -26,6 +28,7 @@ class SubsonicService {
   Dio _dio;
   ServerConfig? _config;
   JellyfinService? _jellyfin;
+  YoutubeService? _youtube;
 
   static const String _clientName = 'Musly';
   static const String _apiVersion = '1.16.1';
@@ -84,8 +87,15 @@ class SubsonicService {
     if (config.isJellyfin) {
       _jellyfin ??= JellyfinService();
       _jellyfin!.configure(config);
+      _youtube?.dispose();
+      _youtube = null;
+    // } else if (config.serverFamily == 'youtube') {
+    //   _youtube ??= YoutubeService();
+    //   _jellyfin = null;
     } else {
       _jellyfin = null;
+      _youtube?.dispose();
+      _youtube = null;
       _configureCertificateValidation(
         config.allowSelfSignedCertificates,
         customCertPath: config.customCertificatePath,
@@ -93,6 +103,25 @@ class SubsonicService {
         clientCertPassword: config.clientCertificatePassword,
       );
     }
+  }
+
+  bool get isYoutube => _youtube != null;
+
+  /// For YouTube songs, returns a pre-warmed [StreamAudioSource] that proxies
+  /// audio through youtube_explode_dart's HTTP client (avoids ExoPlayer's 403).
+  /// Returns null for Subsonic / Jellyfin (use [resolveStreamUrlAsync]).
+  Future<StreamAudioSource?> getYoutubeAudioSource(Song song) async {
+    if (_youtube != null) return _youtube!.buildAudioSource(song.id);
+    return null;
+  }
+
+  /// Resolves the playable URL for [song]. For YouTube this calls the async
+  /// manifest extraction; for other families it returns the pre-built URL.
+  Future<String> resolveStreamUrlAsync(Song song) async {
+    if (_youtube != null) {
+      return _youtube!.resolveStreamUrl(song.id);
+    }
+    return getStreamUrl(song.id);
   }
 
   void _configureCertificateValidation(
@@ -302,6 +331,7 @@ class SubsonicService {
 
   Future<PingResult> pingWithError() async {
     if (_jellyfin != null) return _jellyfin!.pingWithError();
+    if (_youtube != null) return _youtube!.pingWithError();
     try {
       final response = await _request('ping');
       return PingResult(
@@ -336,6 +366,7 @@ class SubsonicService {
 
   String getCoverArtUrl(String? coverArt, {int size = 300}) {
     if (_jellyfin != null) return _jellyfin!.getCoverArtUrl(coverArt, size: size);
+    if (_youtube != null) return _youtube!.getCoverArtUrl(coverArt, size: size);
     if (coverArt == null || _config == null) {
       return '';
     }
@@ -365,6 +396,7 @@ class SubsonicService {
 
   String getStreamUrl(String songId, {int? maxBitRate, String? format}) {
     if (_jellyfin != null) return _jellyfin!.getStreamUrl(songId, maxBitRate: maxBitRate, format: format);
+    if (_youtube != null) return _youtube!.getStreamUrl(songId);
     final params = <String, String>{'id': songId};
     if (maxBitRate != null) {
       params['maxBitRate'] = maxBitRate.toString();
@@ -377,6 +409,7 @@ class SubsonicService {
 
   Future<List<Artist>> getArtists() async {
     if (_jellyfin != null) return _jellyfin!.getArtists();
+    if (_youtube != null) return _youtube!.getArtists();
     final response = await _request('getArtists');
     final artists = <Artist>[];
 
@@ -406,6 +439,7 @@ class SubsonicService {
     int offset = 0,
   }) async {
     if (_jellyfin != null) return _jellyfin!.getAlbumList(type: type, size: size, offset: offset);
+    if (_youtube != null) return _youtube!.getAlbumList(type: type, size: size, offset: offset);
     final response = await _request('getAlbumList2', {
       'type': type,
       'size': size.toString(),
@@ -424,12 +458,14 @@ class SubsonicService {
 
   Future<Album> getAlbum(String id) async {
     if (_jellyfin != null) return _jellyfin!.getAlbum(id);
+    if (_youtube != null) return _youtube!.getAlbum(id);
     final response = await _request('getAlbum', {'id': id});
     return Album.fromJson(response['album'] as Map<String, dynamic>);
   }
 
   Future<List<Song>> getAlbumSongs(String albumId) async {
     if (_jellyfin != null) return _jellyfin!.getAlbumSongs(albumId);
+    if (_youtube != null) return _youtube!.getAlbumSongs(albumId);
     final response = await _request('getAlbum', {'id': albumId});
     final songsData = response['album']?['song'];
     if (songsData is List) {
@@ -442,6 +478,7 @@ class SubsonicService {
 
   Future<List<Album>> getArtistAlbums(String artistId) async {
     if (_jellyfin != null) return _jellyfin!.getArtistAlbums(artistId);
+    if (_youtube != null) return _youtube!.getArtistAlbums(artistId);
     final response = await _request('getArtist', {'id': artistId});
     final albumsData = response['artist']?['album'];
     if (albumsData is List) {
@@ -454,6 +491,7 @@ class SubsonicService {
 
   Future<List<Playlist>> getPlaylists() async {
     if (_jellyfin != null) return _jellyfin!.getPlaylists();
+    if (_youtube != null) return _youtube!.getPlaylists();
     final response = await _request('getPlaylists');
     final playlistsData = response['playlists']?['playlist'];
     if (playlistsData is List) {
@@ -466,6 +504,7 @@ class SubsonicService {
 
   Future<Playlist> getPlaylist(String id) async {
     if (_jellyfin != null) return _jellyfin!.getPlaylist(id);
+    if (_youtube != null) return _youtube!.getPlaylist(id);
     final response = await _request('getPlaylist', {'id': id});
     return Playlist.fromJson(response['playlist'] as Map<String, dynamic>);
   }
@@ -477,6 +516,10 @@ class SubsonicService {
   }) async {
     if (_jellyfin != null) {
       await _jellyfin!.createPlaylist(name: name, comment: comment, songIds: songIds);
+      return;
+    }
+    if (_youtube != null) {
+      await _youtube!.createPlaylist(name: name, comment: comment, songIds: songIds);
       return;
     }
     // songId must be appended directly, using it as a map key would produce
@@ -559,6 +602,7 @@ class SubsonicService {
 
   Future<void> deletePlaylist(String id) async {
     if (_jellyfin != null) { await _jellyfin!.deletePlaylist(id); return; }
+    if (_youtube != null) { await _youtube!.deletePlaylist(id); return; }
     await _request('deletePlaylist', {'id': id});
   }
 
@@ -569,6 +613,7 @@ class SubsonicService {
     int songCount = 20,
   }) async {
     if (_jellyfin != null) return _jellyfin!.search(query, songCount: songCount, albumCount: albumCount, artistCount: artistCount);
+    if (_youtube != null) return _youtube!.search(query, songCount: songCount, albumCount: albumCount, artistCount: artistCount);
     final response = await _request('search3', {
       'query': query,
       'artistCount': artistCount.toString(),
@@ -601,6 +646,7 @@ class SubsonicService {
 
   Future<List<Song>> getRandomSongs({int size = 20, String? genre}) async {
     if (_jellyfin != null) return _jellyfin!.getRandomSongs(size: size, genre: genre);
+    if (_youtube != null) return _youtube!.getRandomSongs(size: size, genre: genre);
     final params = <String, String>{'size': size.toString()};
     if (genre != null) params['genre'] = genre;
 
@@ -616,6 +662,7 @@ class SubsonicService {
 
   Future<void> star({String? id, String? albumId, String? artistId}) async {
     if (_jellyfin != null) { await _jellyfin!.star(id: id, albumId: albumId, artistId: artistId); return; }
+    if (_youtube != null) { await _youtube!.star(id: id, albumId: albumId, artistId: artistId); return; }
     final params = <String, String>{};
     if (id != null) params['id'] = id;
     if (albumId != null) params['albumId'] = albumId;
@@ -625,6 +672,7 @@ class SubsonicService {
 
   Future<void> unstar({String? id, String? albumId, String? artistId}) async {
     if (_jellyfin != null) { await _jellyfin!.unstar(id: id, albumId: albumId, artistId: artistId); return; }
+    if (_youtube != null) { await _youtube!.unstar(id: id, albumId: albumId, artistId: artistId); return; }
     final params = <String, String>{};
     if (id != null) params['id'] = id;
     if (albumId != null) params['albumId'] = albumId;
@@ -641,6 +689,7 @@ class SubsonicService {
 
   Future<SearchResult> getStarred() async {
     if (_jellyfin != null) return _jellyfin!.getStarred();
+    if (_youtube != null) return _youtube!.getStarred();
     final response = await _request('getStarred2');
     final starred = response['starred2'];
 
@@ -667,13 +716,20 @@ class SubsonicService {
 
   Future<void> scrobble(String id, {bool submission = true}) async {
     if (_jellyfin != null) { await _jellyfin!.scrobble(id, submission: submission); return; }
+    if (_youtube != null) { await _youtube!.scrobble(id, submission: submission); return; }
     await _request('scrobble', {'id': id, 'submission': submission.toString()});
   }
 
   Future<Map<String, dynamic>?> getLyrics({
     String? artist,
     String? title,
+    String? id,
   }) async {
+    if (_jellyfin != null && id != null) {
+      final result = await _jellyfin!.getLyrics(id);
+      if (result != null && result.containsKey('value')) return result;
+      return null;
+    }
     try {
       final params = <String, String>{};
       if (artist != null) params['artist'] = artist;
@@ -687,6 +743,11 @@ class SubsonicService {
   }
 
   Future<Map<String, dynamic>?> getLyricsBySongId(String songId) async {
+    if (_jellyfin != null) {
+      final result = await _jellyfin!.getLyrics(songId);
+      if (result != null && result.containsKey('structuredLyrics')) return result;
+      return null;
+    }
     try {
       final response = await _request('getLyricsBySongId', {'id': songId});
       return response['lyricsList'] as Map<String, dynamic>?;
@@ -697,6 +758,7 @@ class SubsonicService {
 
   Future<List<Genre>> getGenres() async {
     if (_jellyfin != null) return _jellyfin!.getGenres();
+    if (_youtube != null) return _youtube!.getGenres();
     final response = await _request('getGenres');
     final genresData = response['genres']?['genre'];
     if (genresData is List) {
@@ -715,6 +777,7 @@ class SubsonicService {
     int offset = 0,
   }) async {
     if (_jellyfin != null) return _jellyfin!.getSongsByGenre(genre, size: count, offset: offset);
+    if (_youtube != null) return _youtube!.getSongsByGenre(genre, size: count, offset: offset);
     final response = await _request('getSongsByGenre', {
       'genre': genre,
       'count': count.toString(),
@@ -735,6 +798,7 @@ class SubsonicService {
     int offset = 0,
   }) async {
     if (_jellyfin != null) return _jellyfin!.getAlbumsByGenre(genre, size: size, offset: offset);
+    if (_youtube != null) return _youtube!.getAlbumsByGenre(genre, size: size, offset: offset);
     try {
       final response = await _request('getAlbumList2', {
         'type': 'byGenre',
@@ -861,6 +925,7 @@ class SubsonicService {
 
   Future<List<Song>> getSimilarSongs(String id, {int count = 50}) async {
     if (_jellyfin != null) return _jellyfin!.getSimilarSongs(id, count: count);
+    if (_youtube != null) return _youtube!.getSimilarSongs(id, count: count);
     try {
       final response = await _request('getSimilarSongs2', {
         'id': id,
@@ -896,6 +961,7 @@ class SubsonicService {
     int count = 50,
   }) async {
     if (_jellyfin != null) return _jellyfin!.getArtistTopSongs(artistId, count: count);
+    if (_youtube != null) return _youtube!.getArtistTopSongs(artistId, count: count);
     try {
       
       final artist = await getArtist(artistId);

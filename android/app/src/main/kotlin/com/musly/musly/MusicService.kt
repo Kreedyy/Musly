@@ -62,6 +62,10 @@ class MusicService : MediaBrowserServiceCompat() {
     private var isPlaying: Boolean = false
     private var volumeProvider: VolumeProviderCompat? = null
     private var upnpExpectedVolume = 0
+    
+    // Lyrics support
+    private var currentLyricsLine: String? = null
+    private var hasLyrics: Boolean = false
 
     private val mediaItems = mutableListOf<MediaBrowserCompat.MediaItem>()
     private val recentSongs = mutableListOf<MediaBrowserCompat.MediaItem>()
@@ -570,9 +574,16 @@ class MusicService : MediaBrowserServiceCompat() {
         val mediaMetadata = controller.metadata
         val description = mediaMetadata?.description
 
+        // Use lyrics line as subtitle if available, otherwise use artist
+        val subtitleText = if (hasLyrics && !currentLyricsLine.isNullOrEmpty()) {
+            currentLyricsLine
+        } else {
+            description?.subtitle ?: currentArtist
+        }
+
         val builder = NotificationCompat.Builder(this, CHANNEL_ID).apply {
             setContentTitle(description?.title ?: currentTitle)
-            setContentText(description?.subtitle ?: currentArtist)
+            setContentText(subtitleText)
             setSubText(description?.description ?: currentAlbum)
             setSmallIcon(R.mipmap.ic_launcher)
             setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -725,6 +736,26 @@ class MusicService : MediaBrowserServiceCompat() {
         val providerVolume = (volume / 5.0).roundToInt().coerceIn(0, 20)
         upnpExpectedVolume = providerVolume
         volumeProvider?.currentVolume = providerVolume
+    }
+
+    // Lyrics support methods
+    fun updateLyrics(lyricsLine: String?) {
+        if (lyricsLine == null || lyricsLine == currentLyricsLine) return
+        
+        currentLyricsLine = lyricsLine
+        hasLyrics = true
+        
+        // Refresh notification to show new lyrics line
+        showNotification()
+        
+        Log.d(TAG, "Updated lyrics: $lyricsLine")
+    }
+    
+    fun clearLyrics() {
+        currentLyricsLine = null
+        hasLyrics = false
+        showNotification()
+        Log.d(TAG, "Cleared lyrics")
     }
 
     override fun onDestroy() {

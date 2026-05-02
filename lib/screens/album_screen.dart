@@ -271,6 +271,8 @@ class _AlbumScreenState extends State<AlbumScreen> {
                         _album!.name,
                         style: theme.textTheme.headlineLarge,
                         textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       MultiArtistWidget(
@@ -295,6 +297,8 @@ class _AlbumScreenState extends State<AlbumScreen> {
                         ].join(' • '),
                         style: theme.textTheme.bodySmall,
                         textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 20),
 

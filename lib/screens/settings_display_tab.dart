@@ -639,9 +639,13 @@ class _SettingsDisplayTabState extends State<SettingsDisplayTab> {
               child: Icon(icon, color: iconColor, size: 16),
             ),
             const SizedBox(width: 10),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            Flexible(
+              child: Text(
+                label,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
             if (trailing != null) ...[const Spacer(), trailing],
           ],

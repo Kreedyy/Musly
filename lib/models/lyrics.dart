@@ -1,3 +1,10 @@
+class WordSegment {
+  final Duration timestamp;
+  final String text;
+
+  WordSegment({required this.timestamp, required this.text});
+}
+
 class SyncedLyrics {
   final List<LyricLine> lines;
   final String? artist;
@@ -7,6 +14,28 @@ class SyncedLyrics {
 
   bool get isEmpty => lines.isEmpty;
   bool get isNotEmpty => lines.isNotEmpty;
+
+  static final _wordTagRegex = RegExp(r'<(\d{1,2}):(\d{2})[.:]?(\d{2,3})>');
+
+  static List<WordSegment> _parseWordSegments(String rawText) {
+    final segments = <WordSegment>[];
+    final matches = _wordTagRegex.allMatches(rawText).toList();
+    for (int i = 0; i < matches.length; i++) {
+      final m = matches[i];
+      final minutes = int.parse(m.group(1)!);
+      final seconds = int.parse(m.group(2)!);
+      final msStr = m.group(3)!;
+      final ms = msStr.length == 2 ? int.parse(msStr) * 10 : int.parse(msStr);
+      final ts = Duration(minutes: minutes, seconds: seconds, milliseconds: ms);
+      final textStart = m.end;
+      final textEnd = i + 1 < matches.length ? matches[i + 1].start : rawText.length;
+      final segText = rawText.substring(textStart, textEnd).trim();
+      if (segText.isNotEmpty) {
+        segments.add(WordSegment(timestamp: ts, text: segText));
+      }
+    }
+    return segments;
+  }
 
   factory SyncedLyrics.fromLrc(String lrcContent) {
     final lines = <LyricLine>[];
@@ -34,7 +63,7 @@ class SyncedLyrics {
         continue;
       }
 
-      final regex = RegExp(r'\[(\d{1,2}):(\d{2})[:.](\d{2,3})\](.*)');
+      final regex = RegExp(r'\[(\d{1,2}):(\d{2})[:.](\d{2,3})\](.*)', dotAll: true);
       final match = regex.firstMatch(trimmed);
 
       if (match != null) {
@@ -44,27 +73,31 @@ class SyncedLyrics {
         final milliseconds = millisPart.length == 2
             ? int.parse(millisPart) * 10
             : int.parse(millisPart);
-        var text = match.group(4)?.trim() ?? '';
+        final rawText = match.group(4) ?? '';
+        final lineTimestamp = Duration(
+          minutes: minutes,
+          seconds: seconds,
+          milliseconds: milliseconds,
+        );
 
-        // Remove word-by-word timestamps like <00:00.50>, <00:00>, <1234>, etc.
-        // Match any < > content that looks like a timestamp
-        text = text.replaceAll(RegExp(r'<\d{1,2}:\d{2}(?:[:.]\d{2,3})?>'), '');
-        // Also remove standalone < > tags that might be numbers
-        text = text.replaceAll(RegExp(r'<\d+>'), '');
-        // Clean up multiple spaces
-        text = text.replaceAll(RegExp(r'\s+'), ' ').trim();
-
-        if (text.isNotEmpty) {
-          lines.add(
-            LyricLine(
-              timestamp: Duration(
-                minutes: minutes,
-                seconds: seconds,
-                milliseconds: milliseconds,
-              ),
-              text: text,
-            ),
-          );
+        if (_wordTagRegex.hasMatch(rawText)) {
+          final cleanText = rawText
+              .replaceAll(_wordTagRegex, '')
+              .replaceAll(RegExp(r'\s+'), ' ')
+              .trim();
+          if (cleanText.isNotEmpty) {
+            final wordSegs = _parseWordSegments(rawText);
+            lines.add(LyricLine(
+              timestamp: lineTimestamp,
+              text: cleanText,
+              words: wordSegs.isNotEmpty ? wordSegs : null,
+            ));
+          }
+        } else {
+          final text = rawText.trim();
+          if (text.isNotEmpty) {
+            lines.add(LyricLine(timestamp: lineTimestamp, text: text));
+          }
         }
       }
     }
@@ -105,8 +138,11 @@ class SyncedLyrics {
 class LyricLine {
   final Duration timestamp;
   final String text;
+  final List<WordSegment>? words;
 
-  LyricLine({required this.timestamp, required this.text});
+  LyricLine({required this.timestamp, required this.text, this.words});
+
+  bool get hasWordTimestamps => words != null && words!.isNotEmpty;
 
   @override
   String toString() => '[$timestamp] $text';

@@ -39,7 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _allowSelfSignedCertificates = false;
   bool _obscurePassword = true;
   bool _showAdvancedOptions = false;
-  bool _serverFamilyIsJellyfin = false;
+  String _serverFamily = 'subsonic'; // 'subsonic' | 'jellyfin' | 'youtube'
   String? _customCertificatePath;
   String? _customCertificateName;
   final _profileNameController = TextEditingController();
@@ -316,13 +316,20 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) return;
+    // YouTube Music requires no credentials — skip form validation
+    if (_serverFamily != 'youtube') {
+      if (!_formKey.currentState!.validate()) return;
+    }
 
     setState(() => _loginError = null);
 
-    final serverUrl = _serverController.text.trim();
+    final serverUrl = _serverFamily == 'youtube'
+        ? 'https://music.youtube.com'
+        : _serverController.text.trim();
 
-    if (!serverUrl.startsWith('http://') && !serverUrl.startsWith('https://')) {
+    if (_serverFamily != 'youtube' &&
+        !serverUrl.startsWith('http://') &&
+        !serverUrl.startsWith('https://')) {
       setState(
         () => _loginError = 'Server URL must start with http:// or https://',
       );
@@ -343,7 +350,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ? null
           : _clientCertPasswordController.text,
       profileName: profileName.isEmpty ? null : profileName,
-      serverFamily: _serverFamilyIsJellyfin ? 'jellyfin' : 'subsonic',
+      serverFamily: _serverFamily,
     );
 
     if (!success && mounted) {
@@ -537,14 +544,47 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   const SizedBox(height: 16),
                   _ServerFamilyToggle(
-                    isJellyfin: _serverFamilyIsJellyfin,
+                    serverFamily: _serverFamily,
                     onChanged: (v) => setState(() {
-                      _serverFamilyIsJellyfin = v;
+                      _serverFamily = v;
                       _useLegacyAuth = false;
                     }),
                   ),
                   const SizedBox(height: 16),
 
+                  if (_serverFamily == 'youtube') ...[                    
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF0000).withAlpha(20),
+                        border: Border.all(
+                          color: const Color(0xFFFF0000).withAlpha(80),
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            CupertinoIcons.info_circle,
+                            color: Color(0xFFFF0000),
+                            size: 18,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'YouTube Music streams music directly from YouTube. No account required — tap Connect to start.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.white70
+                                    : Colors.black87,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else ...[                    
                   TextFormField(
                     controller: _serverController,
                     focusNode: _serverFocusNode,
@@ -628,6 +668,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       return null;
                     },
                   ),
+                  ],
                   const SizedBox(height: 16),
 
                   Row(
@@ -1157,11 +1198,11 @@ class _SavedProfilesSwitcherState extends State<_SavedProfilesSwitcher> {
 }
 
 class _ServerFamilyToggle extends StatelessWidget {
-  final bool isJellyfin;
-  final ValueChanged<bool> onChanged;
+  final String serverFamily;
+  final ValueChanged<String> onChanged;
 
   const _ServerFamilyToggle({
-    required this.isJellyfin,
+    required this.serverFamily,
     required this.onChanged,
   });
 
@@ -1169,42 +1210,27 @@ class _ServerFamilyToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final labelColor = isDark ? Colors.white70 : Colors.black87;
-    final activeColor = const Color(0xFF6366F1);
 
-    Widget chip(String label, bool selected, IconData icon, bool value) {
-      return GestureDetector(
-        onTap: () => onChanged(value),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: selected
-                ? activeColor.withAlpha(30)
-                : Colors.transparent,
-            border: Border.all(
-              color: selected ? activeColor : (isDark ? Colors.white24 : Colors.black26),
-              width: selected ? 1.5 : 1,
-            ),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 16, color: selected ? activeColor : labelColor),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                  color: selected ? activeColor : labelColor,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
+    final chips = [
+      (
+        label: 'Subsonic',
+        family: 'subsonic',
+        icon: CupertinoIcons.music_note,
+        activeColor: const Color(0xFF6366F1),
+      ),
+      (
+        label: 'Emby / Jellyfin',
+        family: 'jellyfin',
+        icon: CupertinoIcons.tv,
+        activeColor: const Color(0xFF6366F1),
+      ),
+      // (
+      //   label: 'YouTube Music',
+      //   family: 'youtube',
+      //   icon: CupertinoIcons.play_rectangle,
+      //   activeColor: const Color(0xFFFF0000),
+      // ),
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1220,10 +1246,49 @@ class _ServerFamilyToggle extends StatelessWidget {
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
-          children: [
-            chip('Subsonic / Navidrome', !isJellyfin, CupertinoIcons.music_note, false),
-            chip('Emby / Jellyfin', isJellyfin, CupertinoIcons.tv, true),
-          ],
+          runSpacing: 8,
+          children: chips.map((c) {
+            final selected = serverFamily == c.family;
+            return GestureDetector(
+              onTap: () => onChanged(c.family),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? c.activeColor.withAlpha(30)
+                      : Colors.transparent,
+                  border: Border.all(
+                    color: selected
+                        ? c.activeColor
+                        : (isDark ? Colors.white24 : Colors.black26),
+                    width: selected ? 1.5 : 1,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      c.icon,
+                      size: 16,
+                      color: selected ? c.activeColor : labelColor,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      c.label,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight:
+                            selected ? FontWeight.w600 : FontWeight.normal,
+                        color: selected ? c.activeColor : labelColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
         ),
       ],
     );

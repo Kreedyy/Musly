@@ -297,6 +297,8 @@ class _AllSongsScreenState extends State<AllSongsScreen> {
                                       fontSize: 12,
                                       color: AppTheme.appleMusicRed,
                                     ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ],
                               ),

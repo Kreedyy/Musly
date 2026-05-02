@@ -27,9 +27,11 @@ class AppleMusicLyricsController extends ChangeNotifier {
   int _selectedIndex = -1;
   Duration _currentPosition = Duration.zero;
 
-  /// ValueNotifier that ticks with line progress for the active line only.
-  /// This avoids rebuilding the entire tree on every frame.
+  /// ValueNotifier that ticks with line progress [0.0-1.0] for the active line.
   final ValueNotifier<double> progressNotifier = ValueNotifier<double>(0.0);
+
+  /// ValueNotifier that ticks with the raw playback position for word-by-word lines.
+  final ValueNotifier<Duration> positionNotifier = ValueNotifier<Duration>(Duration.zero);
 
   bool get isUserScrolling => _selectedIndex != -1;
   List<LyricLine> get lines => _lines;
@@ -43,11 +45,13 @@ class AppleMusicLyricsController extends ChangeNotifier {
     _selectedIndex = -1;
     _currentPosition = Duration.zero;
     progressNotifier.value = 0.0;
+    positionNotifier.value = Duration.zero;
     notifyListeners();
   }
 
   void setPosition(Duration position) {
     _currentPosition = position;
+    positionNotifier.value = position;
     final newIndex = _computeActiveIndex(position);
     final indexChanged = newIndex != _activeIndex;
     if (indexChanged) {
@@ -112,6 +116,7 @@ class AppleMusicLyricsController extends ChangeNotifier {
   @override
   void dispose() {
     progressNotifier.dispose();
+    positionNotifier.dispose();
     super.dispose();
   }
 }
@@ -320,6 +325,7 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView>
           await subsonicService.getLyrics(
             artist: _song.artist,
             title: _song.title,
+            id: _song.id,
           );
 
       if (plainData != null) {
@@ -356,9 +362,9 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView>
       _lyrics = lyrics;
       _isLoading = false;
     });
-    _lyricsController.loadLines(lyrics.lines);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      _lyricsController.loadLines(lyrics.lines);
       final pos = Provider.of<PlayerProvider>(context, listen: false).position;
       _lyricsController.setPosition(pos);
     });
@@ -932,14 +938,14 @@ class _AMLLLyricsWidgetState extends State<AMLLLyricsWidget>
   void _onControllerChanged() {
     if (!mounted) return;
     final idx = widget.controller.activeIndex;
-    if (idx != _lastActiveIndex && idx >= 0 && !_userScrolling) {
+    final indexChanged = idx != _lastActiveIndex;
+    if (indexChanged && idx >= 0 && !_userScrolling) {
       _lastActiveIndex = idx;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _springScrollToLine(idx);
       });
     }
-    // Only setState for structural changes (active index change), not progress
-    if (idx != _lastActiveIndex || widget.controller.isUserScrolling) {
+    if (indexChanged || widget.controller.isUserScrolling) {
       setState(() {});
     }
   }
@@ -1096,9 +1102,8 @@ class _AMLLLyricsWidgetState extends State<AMLLLyricsWidget>
                   line: lines[index],
                   isActive: isActive,
                   isSelected: isSelected,
-                  progressNotifier: isActive
-                      ? widget.controller.progressNotifier
-                      : null,
+                  progressNotifier: isActive ? widget.controller.progressNotifier : null,
+                  positionNotifier: isActive ? widget.controller.positionNotifier : null,
                   staticProgress: index < activeIndex ? 1.0 : 0.0,
                   targetOpacity: isActive || isSelected ? 1.0 : opacity,
                   targetScale: scale,
@@ -1129,10 +1134,10 @@ class _AMLLLineWidget extends StatefulWidget {
   final LyricLine line;
   final bool isActive;
   final bool isSelected;
-
-  /// Only non-null for the active line — listens for progress updates.
+  /// Only non-null for the active line — line progress [0.0-1.0] for fade-in.
   final ValueNotifier<double>? progressNotifier;
-
+  /// Only non-null for the active line — raw position for word-by-word timing.
+  final ValueNotifier<Duration>? positionNotifier;
   /// Static progress for non-active lines (0.0 or 1.0).
   final double staticProgress;
   final double targetOpacity;
@@ -1148,6 +1153,7 @@ class _AMLLLineWidget extends StatefulWidget {
     required this.isActive,
     required this.isSelected,
     required this.progressNotifier,
+    required this.positionNotifier,
     required this.staticProgress,
     required this.targetOpacity,
     required this.targetScale,
@@ -1316,10 +1322,6 @@ class _AMLLLineWidgetState extends State<_AMLLLineWidget>
     );
   }
 
-  /// Build the gradient text child.
-  /// Replaced the gradient approach with a discrete word-by-word highlight.
-  /// This completely eliminates ShaderMask overhead, fully supports multi-line
-  /// wrapping natively with RichText, and matches the "parola per parola" behavior.
   Widget _buildGradientChild() {
     final textStyle = TextStyle(
       fontSize: widget.fontSize,
@@ -1331,120 +1333,105 @@ class _AMLLLineWidgetState extends State<_AMLLLineWidget>
       letterSpacing: -0.5,
     );
 
-    // Split into alternating words/non-words chunks keeping all whitespace intact
-    final textChunks = <String>[];
-    for (final match in RegExp(r'\s+|\S+').allMatches(widget.line.text)) {
-      textChunks.add(match.group(0)!);
-    }
-    final int totalWords = textChunks
-        .where((s) => s.trim().isEmpty == false)
-        .length;
+    // ── Active word-by-word line ──────────────────────────────────────────────
+    if (widget.isActive && widget.line.hasWordTimestamps) {
+      return ValueListenableBuilder<Duration>(
+        valueListenable: widget.positionNotifier ?? ValueNotifier(Duration.zero),
+        builder: (context, position, _) {
+          final words = widget.line.words!;
+          int activeWordIdx = -1;
+          for (int i = 0; i < words.length; i++) {
+            if (position >= words[i].timestamp) {
+              activeWordIdx = i;
+            } else {
+              break;
+            }
+          }
 
-    // Fully played or not active
-    if (!widget.isActive || widget.line.timestamp == Duration.zero) {
-      if (widget.isActive ||
-          widget.isSelected ||
-          widget.staticProgress >= 1.0) {
-        return Text(
-          widget.line.text,
-          textAlign: TextAlign.left,
-          style: textStyle.copyWith(
-            shadows: (widget.isActive || widget.isSelected)
-                ? [
-                    Shadow(
-                      color: Colors.white.withValues(alpha: 0.4),
-                      blurRadius: 16,
-                    ),
-                  ]
-                : null,
-          ),
-        );
-      }
-      return Text(
-        widget.line.text,
-        textAlign: TextAlign.left,
-        style: textStyle.copyWith(color: Colors.white.withValues(alpha: 0.3)),
+          if (activeWordIdx >= words.length - 1 && activeWordIdx >= 0) {
+            return Text(
+              widget.line.text,
+              textAlign: TextAlign.left,
+              style: textStyle.copyWith(
+                shadows: [Shadow(color: Colors.white.withValues(alpha: 0.4), blurRadius: 16)],
+              ),
+            );
+          }
+
+          final spans = <TextSpan>[];
+          for (int i = 0; i < words.length; i++) {
+            if (i > 0) {
+              final spaceAlpha = i <= activeWordIdx ? 0.85 : 0.28;
+              spans.add(TextSpan(
+                text: ' ',
+                style: textStyle.copyWith(color: Colors.white.withValues(alpha: spaceAlpha)),
+              ));
+            }
+            final isPast = i < activeWordIdx;
+            final isCurrent = i == activeWordIdx;
+            spans.add(TextSpan(
+              text: words[i].text,
+              style: textStyle.copyWith(
+                color: Colors.white.withValues(alpha: isPast ? 0.85 : isCurrent ? 1.0 : 0.28),
+                shadows: isCurrent
+                    ? [Shadow(color: Colors.white.withValues(alpha: 0.5), blurRadius: 20)]
+                    : null,
+              ),
+            ));
+          }
+          return Text.rich(TextSpan(children: spans), textAlign: TextAlign.left);
+        },
       );
     }
 
-    // Active Line - Word by Word highlighting using ValueListenableBuilder
-    return ValueListenableBuilder<double>(
-      valueListenable:
-          widget.progressNotifier ?? ValueNotifier(widget.staticProgress),
-      builder: (context, progress, _) {
-        if (progress >= 1.0) {
+    // ── Active regular synced line — fade-in whole line ───────────────────────
+    if (widget.isActive && widget.line.timestamp != Duration.zero) {
+      return ValueListenableBuilder<double>(
+        valueListenable: widget.progressNotifier ?? ValueNotifier(0.0),
+        builder: (context, progress, _) {
+          if (progress >= 1.0) {
+            return Text(
+              widget.line.text,
+              textAlign: TextAlign.left,
+              style: textStyle.copyWith(
+                shadows: [Shadow(color: Colors.white.withValues(alpha: 0.4), blurRadius: 16)],
+              ),
+            );
+          }
+          final fadeProgress = (progress / 0.15).clamp(0.0, 1.0);
+          final alpha = 0.28 + (0.72 * fadeProgress);
           return Text(
             widget.line.text,
             textAlign: TextAlign.left,
             style: textStyle.copyWith(
-              shadows: [
-                Shadow(
-                  color: Colors.white.withValues(alpha: 0.4),
-                  blurRadius: 16,
-                ),
-              ],
+              color: Colors.white.withValues(alpha: alpha),
+              shadows: fadeProgress > 0.5
+                  ? [Shadow(color: Colors.white.withValues(alpha: 0.4 * (fadeProgress - 0.5) * 2), blurRadius: 16)]
+                  : null,
             ),
           );
-        }
+        },
+      );
+    }
 
-        int wordCount = 0;
-        final spans = <TextSpan>[];
+    // ── Selected / past / active-unsynced ─────────────────────────────────────
+    if (widget.isActive || widget.isSelected || widget.staticProgress >= 1.0) {
+      return Text(
+        widget.line.text,
+        textAlign: TextAlign.left,
+        style: textStyle.copyWith(
+          shadows: (widget.isActive || widget.isSelected)
+              ? [Shadow(color: Colors.white.withValues(alpha: 0.4), blurRadius: 16)]
+              : null,
+        ),
+      );
+    }
 
-        for (final chunk in textChunks) {
-          if (chunk.trim().isEmpty) {
-            // It's a space/newline
-            spans.add(
-              TextSpan(
-                text: chunk,
-                style: textStyle.copyWith(
-                  color: Colors.white.withValues(alpha: 0.3),
-                ),
-              ),
-            );
-            continue;
-          }
-
-          // It's a word! Calculate its individual progress
-          double wordAlpha = 0.3;
-          double glowAlpha = 0.0;
-
-          if (totalWords > 0) {
-            final startThreshold = wordCount / totalWords;
-            final endThreshold = (wordCount + 1) / totalWords;
-
-            final rawWordProgress =
-                (progress - startThreshold) / (endThreshold - startThreshold);
-            final wordProgress = rawWordProgress.clamp(0.0, 1.0);
-
-            // Fade the individual word quickly (e.g., reaches full brightness 3x faster than its whole duration)
-            final fadeProgress = (wordProgress * 3.0).clamp(0.0, 1.0);
-
-            wordAlpha = 0.3 + (0.7 * fadeProgress);
-            glowAlpha = 0.4 * fadeProgress;
-          }
-
-          spans.add(
-            TextSpan(
-              text: chunk,
-              style: textStyle.copyWith(
-                color: Colors.white.withValues(alpha: wordAlpha),
-                shadows: glowAlpha > 0.0
-                    ? [
-                        Shadow(
-                          color: Colors.white.withValues(alpha: glowAlpha),
-                          blurRadius: 16,
-                        ),
-                      ]
-                    : null,
-              ),
-            ),
-          );
-
-          wordCount++;
-        }
-
-        return Text.rich(TextSpan(children: spans), textAlign: TextAlign.left);
-      },
+    // ── Dim future line ───────────────────────────────────────────────────────
+    return Text(
+      widget.line.text,
+      textAlign: TextAlign.left,
+      style: textStyle.copyWith(color: Colors.white.withValues(alpha: 0.28)),
     );
   }
 }
