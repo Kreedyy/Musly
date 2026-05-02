@@ -179,7 +179,7 @@ jobs:
 
       - name: Build NSIS Installer
         run: |
-          makensis installer.nsi
+          & "C:\Program Files (x86)\NSIS\makensis.exe" installer.nsi
 
       - name: Upload Windows Build
         uses: actions/upload-artifact@v4
