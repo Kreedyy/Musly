@@ -8,6 +8,7 @@
 
 #include <dart_discord_rpc/dart_discord_rpc_plugin.h>
 #include <dynamic_color/dynamic_color_plugin.h>
+#include <local_notifier/local_notifier_plugin.h>
 #include <media_kit_libs_linux/media_kit_libs_linux_plugin.h>
 #include <screen_retriever/screen_retriever_plugin.h>
 #include <url_launcher_linux/url_launcher_plugin.h>
@@ -21,6 +22,9 @@ void fl_register_plugins(FlPluginRegistry* registry) {
   g_autoptr(FlPluginRegistrar) dynamic_color_registrar =
       fl_plugin_registry_get_registrar_for_plugin(registry, "DynamicColorPlugin");
   dynamic_color_plugin_register_with_registrar(dynamic_color_registrar);
+  g_autoptr(FlPluginRegistrar) local_notifier_registrar =
+      fl_plugin_registry_get_registrar_for_plugin(registry, "LocalNotifierPlugin");
+  local_notifier_plugin_register_with_registrar(local_notifier_registrar);
   g_autoptr(FlPluginRegistrar) media_kit_libs_linux_registrar =
       fl_plugin_registry_get_registrar_for_plugin(registry, "MediaKitLibsLinuxPlugin");
   media_kit_libs_linux_plugin_register_with_registrar(media_kit_libs_linux_registrar);

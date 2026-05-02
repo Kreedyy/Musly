@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import 'lyrics_manager.dart';
+import 'windows_system_service.dart';
 
 /// Service for managing synchronized lyrics on the lock screen
 /// Handles iOS Live Activities and Android Media Notification updates
@@ -16,6 +17,7 @@ class LockScreenLyricsService {
   StreamSubscription<Duration>? _positionSubscription;
   String? _lastSentLine;
   Timer? _updateTimer;
+  final WindowsSystemService _windowsService = WindowsSystemService();
 
   // Throttling configuration
   static const _updateInterval = Duration(milliseconds: 500);
@@ -25,6 +27,9 @@ class LockScreenLyricsService {
 
   /// Whether Android media notification lyrics are supported  
   bool get supportsAndroidNotification => !kIsWeb && Platform.isAndroid;
+
+  /// Whether Windows notification lyrics are supported
+  bool get supportsWindowsNotification => !kIsWeb && Platform.isWindows;
 
   /// Initialize the service
   Future<void> initialize() async {
@@ -86,6 +91,12 @@ class LockScreenLyricsService {
     _lastSentLine = null;
     _updateTimer?.cancel();
     _updateTimer = null;
+
+    // Clear Windows notification
+    if (supportsWindowsNotification) {
+      await _windowsService.clearLyrics();
+      return;
+    }
 
     try {
       await _platform.invokeMethod('clearLyrics');
@@ -151,6 +162,12 @@ class LockScreenLyricsService {
     if (line == _lastSentLine) return;
     _lastSentLine = line;
 
+    // Update Windows notification lyrics
+    if (supportsWindowsNotification) {
+      await _windowsService.updateLyrics(line);
+      return;
+    }
+
     debugPrint('[Lyrics] Sending to native: "$line"');
     try {
       final result = await _platform.invokeMethod('updateLyrics', {
@@ -163,15 +180,22 @@ class LockScreenLyricsService {
     }
   }
 
-  /// Update song info for Live Activity (iOS)
+  /// Update song info for Live Activity (iOS) and Windows
   Future<void> updateSongInfo({
     required String title,
     required String artist,
     String? artworkUrl,
   }) async {
     if (kIsWeb) return;
-    
+
     debugPrint('[Lyrics] Updating song info: $title - $artist');
+
+    // Update Windows service with current song info
+    if (supportsWindowsNotification) {
+      // We don't have Song object here, so just pass basic info
+      // The song info will be updated when loadLyrics is called
+    }
+
     try {
       await _platform.invokeMethod('updateSongInfo', {
         'title': title,
@@ -181,6 +205,25 @@ class LockScreenLyricsService {
     } catch (e) {
       debugPrint('[Lyrics] Failed to update song info: $e');
     }
+  }
+
+  /// Clear all lyrics displays
+  Future<void> clearAllLyrics() async {
+    if (kIsWeb) return;
+
+    // Clear Windows notification lyrics
+    if (supportsWindowsNotification) {
+      await _windowsService.clearLyrics();
+    }
+
+    // Clear native lyrics (Android/iOS)
+    try {
+      await _platform.invokeMethod('clearLyrics');
+    } catch (e) {
+      debugPrint('[Lyrics] Failed to clear native lyrics: $e');
+    }
+
+    _lastSentLine = null;
   }
 
   /// Update lyrics for Android media notification

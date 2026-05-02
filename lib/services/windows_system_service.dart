@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:smtc_windows/smtc_windows.dart';
 import 'package:windows_taskbar/windows_taskbar.dart';
+import 'package:local_notifier/local_notifier.dart';
 import '../models/song.dart';
 
 class WindowsSystemService {
@@ -13,6 +14,9 @@ class WindowsSystemService {
 
   SMTCWindows? _smtc;
   bool _isInitialized = false;
+  LocalNotification? _lyricsNotification;
+  bool _lyricsEnabled = false;
+  Song? _currentSong;
 
   VoidCallback? onPlay;
   VoidCallback? onPause;
@@ -39,7 +43,14 @@ class WindowsSystemService {
         );
 
         _isInitialized = true;
-        debugPrint('WindowsSystemService initialized (SMTC & Taskbar)');
+        
+        // Initialize local notifier for lyrics
+        await localNotifier.setup(
+          appName: 'Musly',
+          shortcutPolicy: ShortcutPolicy.requireNoCreate,
+        );
+        
+        debugPrint('WindowsSystemService initialized (SMTC, Taskbar & Lyrics Notification)');
       } catch (e) {
         debugPrint('Error initializing WindowsSystemService: $e');
         debugPrint(
@@ -94,8 +105,71 @@ class WindowsSystemService {
     }
   }
 
+  /// Update current song info for lyrics display
+  Future<void> updateSongInfo(Song? song) async {
+    if (!kIsWeb && Platform.isWindows) {
+      _currentSong = song;
+      // Clear lyrics when song changes
+      await clearLyrics();
+    }
+  }
+
+  /// Update lyrics line - shows as Windows notification
+  Future<void> updateLyrics(String? lyricsLine) async {
+    if (!kIsWeb && Platform.isWindows && _lyricsEnabled) {
+      if (lyricsLine == null || lyricsLine.isEmpty) {
+        await clearLyrics();
+        return;
+      }
+
+      try {
+        // Close previous notification
+        await _lyricsNotification?.close();
+
+        // Create new notification with current lyrics line
+        _lyricsNotification = LocalNotification(
+          title: _currentSong?.title ?? 'Now Playing',
+          body: lyricsLine,
+          subtitle: _currentSong?.artist ?? 'Unknown Artist',
+          silent: true,
+        );
+
+        await _lyricsNotification?.show();
+        debugPrint('[Windows] Lyrics notification updated: $lyricsLine');
+      } catch (e) {
+        debugPrint('[Windows] Failed to update lyrics notification: $e');
+      }
+    }
+  }
+
+  /// Clear lyrics notification
+  Future<void> clearLyrics() async {
+    if (!kIsWeb && Platform.isWindows) {
+      try {
+        await _lyricsNotification?.close();
+        _lyricsNotification = null;
+        debugPrint('[Windows] Lyrics notification cleared');
+      } catch (e) {
+        debugPrint('[Windows] Failed to clear lyrics notification: $e');
+      }
+    }
+  }
+
+  /// Enable/disable lyrics notifications
+  Future<void> setLyricsEnabled(bool enabled) async {
+    _lyricsEnabled = enabled;
+    if (!enabled) {
+      await clearLyrics();
+    }
+    debugPrint('[Windows] Lyrics notifications enabled: $enabled');
+  }
+
+  /// Get lyrics enabled state
+  bool get lyricsEnabled => _lyricsEnabled;
+
   Future<void> dispose() async {
     if (!kIsWeb && Platform.isWindows) {
+      await clearLyrics();
       WindowsTaskbar.setProgressMode(TaskbarProgressMode.noProgress);
       _isInitialized = false;
     }

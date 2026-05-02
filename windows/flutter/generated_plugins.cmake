@@ -8,6 +8,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   dart_discord_rpc
   dynamic_color
   just_audio_windows
+  local_notifier
   permission_handler_windows
   screen_retriever
   url_launcher_windows

@@ -516,6 +516,11 @@ class MusicService : MediaBrowserServiceCompat() {
             .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, currentAlbum)
             .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, currentDuration)
 
+        // Add lyrics line as display subtitle for Bluetooth AVRCP 1.6+ support
+        if (hasLyrics && !currentLyricsLine.isNullOrEmpty()) {
+            metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, currentLyricsLine)
+        }
+
         val url = currentArtworkUrl
 
         // Avoid clearing existing album art while loading a new one to prevent flicker in Android Auto.
@@ -528,6 +533,12 @@ class MusicService : MediaBrowserServiceCompat() {
                     .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, currentAlbum)
                     .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, currentDuration)
                     .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, currentArtworkBitmap)
+                    // Include lyrics in metadata for Bluetooth
+                    .apply {
+                        if (hasLyrics && !currentLyricsLine.isNullOrEmpty()) {
+                            putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, currentLyricsLine)
+                        }
+                    }
                     .build()
                 mediaSession.setMetadata(updatedMetadata)
             } else {
@@ -549,6 +560,12 @@ class MusicService : MediaBrowserServiceCompat() {
                         .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, currentAlbum)
                         .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, currentDuration)
                         .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap)
+                        // Include lyrics in metadata for Bluetooth
+                        .apply {
+                            if (hasLyrics && !currentLyricsLine.isNullOrEmpty()) {
+                                putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, currentLyricsLine)
+                            }
+                        }
                         .build()
                     mediaSession.setMetadata(updatedMetadata)
                     showNotification()
@@ -745,7 +762,8 @@ class MusicService : MediaBrowserServiceCompat() {
         currentLyricsLine = lyricsLine
         hasLyrics = true
         
-        // Refresh notification to show new lyrics line
+        // Refresh notification and MediaSession metadata for Bluetooth lyrics support
+        updateMediaSessionMetadata()
         showNotification()
         
         Log.d(TAG, "Updated lyrics: $lyricsLine")
@@ -754,6 +772,7 @@ class MusicService : MediaBrowserServiceCompat() {
     fun clearLyrics() {
         currentLyricsLine = null
         hasLyrics = false
+        updateMediaSessionMetadata()
         showNotification()
         Log.d(TAG, "Cleared lyrics")
     }
