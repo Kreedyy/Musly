@@ -80,8 +80,7 @@ class AppleMusicLyricsController extends ChangeNotifier {
     }
 
     if (end <= start) return 1.0;
-    final progress =
-        (_currentPosition.inMilliseconds - start) / (end - start);
+    final progress = (_currentPosition.inMilliseconds - start) / (end - start);
     return progress.clamp(0.0, 1.0);
   }
 
@@ -275,11 +274,14 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView>
     });
 
     try {
-      final subsonicService =
-          Provider.of<SubsonicService>(context, listen: false);
+      final subsonicService = Provider.of<SubsonicService>(
+        context,
+        listen: false,
+      );
       final offlineService = OfflineService();
       final cached = await offlineService.getLocalLyrics(_song.id);
-      final syncedData = cached?['lyricsList'] as Map<String, dynamic>? ??
+      final syncedData =
+          cached?['lyricsList'] as Map<String, dynamic>? ??
           await subsonicService.getLyricsBySongId(_song.id);
 
       if (!mounted) return;
@@ -313,7 +315,8 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView>
         }
       }
 
-      final plainData = cached?['lyrics'] as Map<String, dynamic>? ??
+      final plainData =
+          cached?['lyrics'] as Map<String, dynamic>? ??
           await subsonicService.getLyrics(
             artist: _song.artist,
             title: _song.title,
@@ -379,8 +382,10 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView>
 
   @override
   Widget build(BuildContext context) {
-    final subsonicService =
-        Provider.of<SubsonicService>(context, listen: false);
+    final subsonicService = Provider.of<SubsonicService>(
+      context,
+      listen: false,
+    );
     final String imageUrl;
     if (_song.id == widget.song.id && widget.imageUrl != null) {
       imageUrl = widget.imageUrl!;
@@ -424,8 +429,7 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView>
                       setState(() => _isFullscreen = next);
                       _setWindowFullscreen(next);
                     },
-                    tooltip:
-                        _isFullscreen ? 'Exit Fullscreen' : 'Fullscreen',
+                    tooltip: _isFullscreen ? 'Exit Fullscreen' : 'Fullscreen',
                   ),
                   const SizedBox(width: 8),
                   _buildIconButton(
@@ -465,8 +469,9 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView>
   Widget _buildDesktopContent(BuildContext context, String imageUrl) {
     final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
-    final artSize =
-        math.min(screenWidth * 0.25, screenHeight * 0.45).clamp(200.0, 380.0);
+    final artSize = math
+        .min(screenWidth * 0.25, screenHeight * 0.45)
+        .clamp(200.0, 380.0);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 48.0, vertical: 32.0),
@@ -502,7 +507,7 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView>
                             ? Image.file(
                                 File(imageUrl),
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) =>
+                                errorBuilder: (ctx, err, stack) =>
                                     Container(color: Colors.grey[900]),
                               )
                             : CachedNetworkImage(
@@ -513,9 +518,9 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView>
                                 fadeInDuration: Duration.zero,
                                 fadeOutDuration: Duration.zero,
                                 useOldImageOnUrlChange: true,
-                                placeholder: (_, _) =>
+                                placeholder: (ctx, url) =>
                                     Container(color: Colors.grey[900]),
-                                errorWidget: (_, _, _) =>
+                                errorWidget: (ctx, err, stack) =>
                                     Container(color: Colors.grey[900]),
                               ),
                       ),
@@ -711,7 +716,8 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView>
                 fit: BoxFit.cover,
                 cacheWidth: 300,
                 cacheHeight: 300,
-                errorBuilder: (_, _, _) => Container(color: Colors.black),
+                errorBuilder: (ctx, err, stack) =>
+                    Container(color: Colors.black),
               )
             : CachedNetworkImage(
                 imageUrl: imageUrl,
@@ -721,8 +727,9 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView>
                 fadeInDuration: Duration.zero,
                 fadeOutDuration: Duration.zero,
                 useOldImageOnUrlChange: true,
-                placeholder: (_, _) => Container(color: Colors.black),
-                errorWidget: (_, _, _) => Container(color: Colors.black),
+                placeholder: (ctx, url) => Container(color: Colors.black),
+                errorWidget: (ctx, err, stack) =>
+                    Container(color: Colors.black),
               ),
       ),
     );
@@ -791,10 +798,12 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView>
               SliderTheme(
                 data: SliderThemeData(
                   trackHeight: 3,
-                  thumbShape:
-                      const RoundSliderThumbShape(enabledThumbRadius: 6),
-                  overlayShape:
-                      const RoundSliderOverlayShape(overlayRadius: 14),
+                  thumbShape: const RoundSliderThumbShape(
+                    enabledThumbRadius: 6,
+                  ),
+                  overlayShape: const RoundSliderOverlayShape(
+                    overlayRadius: 14,
+                  ),
                   activeTrackColor: Colors.white,
                   inactiveTrackColor: Colors.white.withValues(alpha: 0.3),
                   thumbColor: Colors.white,
@@ -804,8 +813,8 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView>
                   value: player.progress.clamp(0.0, 1.0),
                   onChanged: (value) {
                     final position = Duration(
-                      milliseconds:
-                          (value * player.duration.inMilliseconds).round(),
+                      milliseconds: (value * player.duration.inMilliseconds)
+                          .round(),
                     );
                     player.seek(position);
                   },
@@ -955,9 +964,10 @@ class _AMLLLyricsWidgetState extends State<AMLLLyricsWidget>
     final currentOffset = _scrollController.offset;
 
     // Target: line CENTER at alignPosition% from top of the viewport
-    final absoluteLineCenter = currentOffset + linePos.dy + (box.size.height / 2);
+    final absoluteLineCenter =
+        currentOffset + linePos.dy + (box.size.height / 2);
     final targetViewportPos = viewportH * widget.alignPosition;
-    
+
     final targetOffset = (absoluteLineCenter - targetViewportPos).clamp(
       0.0,
       _scrollController.position.maxScrollExtent,
@@ -968,17 +978,8 @@ class _AMLLLyricsWidgetState extends State<AMLLLyricsWidget>
     _springAnimController = AnimationController.unbounded(vsync: this);
     _springAnimController!.value = currentOffset;
 
-    final spring = SpringDescription(
-      mass: 0.9,
-      stiffness: 90,
-      damping: 15,
-    );
-    final simulation = SpringSimulation(
-      spring,
-      currentOffset,
-      targetOffset,
-      0,
-    );
+    final spring = SpringDescription(mass: 0.9, stiffness: 90, damping: 15);
+    final simulation = SpringSimulation(spring, currentOffset, targetOffset, 0);
 
     _springAnimController!.addListener(() {
       if (_scrollController.hasClients) {
@@ -1095,7 +1096,9 @@ class _AMLLLyricsWidgetState extends State<AMLLLyricsWidget>
                   line: lines[index],
                   isActive: isActive,
                   isSelected: isSelected,
-                  progressNotifier: isActive ? widget.controller.progressNotifier : null,
+                  progressNotifier: isActive
+                      ? widget.controller.progressNotifier
+                      : null,
                   staticProgress: index < activeIndex ? 1.0 : 0.0,
                   targetOpacity: isActive || isSelected ? 1.0 : opacity,
                   targetScale: scale,
@@ -1126,8 +1129,10 @@ class _AMLLLineWidget extends StatefulWidget {
   final LyricLine line;
   final bool isActive;
   final bool isSelected;
+
   /// Only non-null for the active line — listens for progress updates.
   final ValueNotifier<double>? progressNotifier;
+
   /// Static progress for non-active lines (0.0 or 1.0).
   final double staticProgress;
   final double targetOpacity;
@@ -1159,7 +1164,7 @@ class _AMLLLineWidget extends StatefulWidget {
 class _AMLLLineWidgetState extends State<_AMLLLineWidget>
     with SingleTickerProviderStateMixin {
   late AnimationController _animController;
-  
+
   // Starting values for current transition
   double _startScale = 1.0;
   double _startOpacity = 1.0;
@@ -1176,23 +1181,28 @@ class _AMLLLineWidgetState extends State<_AMLLLineWidget>
   void initState() {
     super.initState();
     _animController = AnimationController.unbounded(vsync: this);
-    
+
     _startScale = _targetScale = widget.targetScale;
-    _startOpacity = _targetOpacity = widget.isActive ? 1.0 : widget.targetOpacity;
-    _startTranslateY = _targetTranslateY = (widget.isActive || widget.isSelected) ? -2.0 : 0.0;
+    _startOpacity = _targetOpacity = widget.isActive
+        ? 1.0
+        : widget.targetOpacity;
+    _startTranslateY = _targetTranslateY =
+        (widget.isActive || widget.isSelected) ? -2.0 : 0.0;
     _startBlur = _targetBlur = widget.blurAmount;
-    
+
     // Set to 1.0 so the builder uses _target* values directly if no animation runs
     _animController.value = 1.0;
   }
 
   void _runSpring() {
     final t = _animController.value;
-    
+
     // Calculate what the CURRENT visible values are, as the new starting point
     _startScale = _startScale + (_targetScale - _startScale) * t;
-    _startOpacity = (_startOpacity + (_targetOpacity - _startOpacity) * t).clamp(0.0, 1.0);
-    _startTranslateY = _startTranslateY + (_targetTranslateY - _startTranslateY) * t;
+    _startOpacity = (_startOpacity + (_targetOpacity - _startOpacity) * t)
+        .clamp(0.0, 1.0);
+    _startTranslateY =
+        _startTranslateY + (_targetTranslateY - _startTranslateY) * t;
     _startBlur = math.max(0.0, _startBlur + (_targetBlur - _startBlur) * t);
 
     // Update targets
@@ -1202,14 +1212,18 @@ class _AMLLLineWidgetState extends State<_AMLLLineWidget>
     _targetBlur = widget.blurAmount;
 
     // Use exactly the same spring as the ListView scroll for perfect sync
-    final spring = const SpringDescription(mass: 0.9, stiffness: 90, damping: 15);
+    final spring = const SpringDescription(
+      mass: 0.9,
+      stiffness: 90,
+      damping: 15,
+    );
     _animController.animateWith(SpringSimulation(spring, 0, 1, 0));
   }
 
   @override
   void didUpdateWidget(_AMLLLineWidget old) {
     super.didUpdateWidget(old);
-    
+
     final targetY = (widget.isActive || widget.isSelected) ? -2.0 : 0.0;
     final oldTargetY = (old.isActive || old.isSelected) ? -2.0 : 0.0;
     final targetOpacity = widget.isActive ? 1.0 : widget.targetOpacity;
@@ -1231,7 +1245,8 @@ class _AMLLLineWidgetState extends State<_AMLLLineWidget>
 
   @override
   Widget build(BuildContext context) {
-    final isPlain = widget.line.timestamp == Duration.zero &&
+    final isPlain =
+        widget.line.timestamp == Duration.zero &&
         widget.staticProgress == 0.0 &&
         !widget.isActive;
 
@@ -1260,11 +1275,16 @@ class _AMLLLineWidgetState extends State<_AMLLLineWidget>
         animation: _animController,
         builder: (context, child) {
           final t = _animController.value;
-          
+
           final scale = _startScale + (_targetScale - _startScale) * t;
-          final opacity = (_startOpacity + (_targetOpacity - _startOpacity) * t).clamp(0.0, 1.0);
-          final translateY = _startTranslateY + (_targetTranslateY - _startTranslateY) * t;
-          final blur = math.max(0.0, _startBlur + (_targetBlur - _startBlur) * t);
+          final opacity = (_startOpacity + (_targetOpacity - _startOpacity) * t)
+              .clamp(0.0, 1.0);
+          final translateY =
+              _startTranslateY + (_targetTranslateY - _startTranslateY) * t;
+          final blur = math.max(
+            0.0,
+            _startBlur + (_targetBlur - _startBlur) * t,
+          );
 
           Widget lineWidget = Padding(
             padding: EdgeInsets.only(bottom: widget.lineGap),
@@ -1284,10 +1304,7 @@ class _AMLLLineWidgetState extends State<_AMLLLineWidget>
 
           if (blur > 0.5) {
             lineWidget = ImageFiltered(
-              imageFilter: ImageFilter.blur(
-                sigmaX: blur,
-                sigmaY: blur,
-              ),
+              imageFilter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
               child: lineWidget,
             );
           }
@@ -1306,10 +1323,9 @@ class _AMLLLineWidgetState extends State<_AMLLLineWidget>
   Widget _buildGradientChild() {
     final textStyle = TextStyle(
       fontSize: widget.fontSize,
-      fontWeight:
-          (widget.isActive || widget.isSelected)
-              ? FontWeight.w800
-              : FontWeight.w700,
+      fontWeight: (widget.isActive || widget.isSelected)
+          ? FontWeight.w800
+          : FontWeight.w700,
       color: Colors.white,
       height: 1.35,
       letterSpacing: -0.5,
@@ -1320,11 +1336,15 @@ class _AMLLLineWidgetState extends State<_AMLLLineWidget>
     for (final match in RegExp(r'\s+|\S+').allMatches(widget.line.text)) {
       textChunks.add(match.group(0)!);
     }
-    final int totalWords = textChunks.where((s) => s.trim().isEmpty == false).length;
+    final int totalWords = textChunks
+        .where((s) => s.trim().isEmpty == false)
+        .length;
 
     // Fully played or not active
     if (!widget.isActive || widget.line.timestamp == Duration.zero) {
-      if (widget.isActive || widget.isSelected || widget.staticProgress >= 1.0) {
+      if (widget.isActive ||
+          widget.isSelected ||
+          widget.staticProgress >= 1.0) {
         return Text(
           widget.line.text,
           textAlign: TextAlign.left,
@@ -1334,7 +1354,7 @@ class _AMLLLineWidgetState extends State<_AMLLLineWidget>
                     Shadow(
                       color: Colors.white.withValues(alpha: 0.4),
                       blurRadius: 16,
-                    )
+                    ),
                   ]
                 : null,
           ),
@@ -1349,7 +1369,8 @@ class _AMLLLineWidgetState extends State<_AMLLLineWidget>
 
     // Active Line - Word by Word highlighting using ValueListenableBuilder
     return ValueListenableBuilder<double>(
-      valueListenable: widget.progressNotifier ?? ValueNotifier(widget.staticProgress),
+      valueListenable:
+          widget.progressNotifier ?? ValueNotifier(widget.staticProgress),
       builder: (context, progress, _) {
         if (progress >= 1.0) {
           return Text(
@@ -1360,7 +1381,7 @@ class _AMLLLineWidgetState extends State<_AMLLLineWidget>
                 Shadow(
                   color: Colors.white.withValues(alpha: 0.4),
                   blurRadius: 16,
-                )
+                ),
               ],
             ),
           );
@@ -1372,12 +1393,14 @@ class _AMLLLineWidgetState extends State<_AMLLLineWidget>
         for (final chunk in textChunks) {
           if (chunk.trim().isEmpty) {
             // It's a space/newline
-            spans.add(TextSpan(
-              text: chunk,
-              style: textStyle.copyWith(
-                color: Colors.white.withValues(alpha: 0.3),
+            spans.add(
+              TextSpan(
+                text: chunk,
+                style: textStyle.copyWith(
+                  color: Colors.white.withValues(alpha: 0.3),
+                ),
               ),
-            ));
+            );
             continue;
           }
 
@@ -1400,28 +1423,27 @@ class _AMLLLineWidgetState extends State<_AMLLLineWidget>
             glowAlpha = 0.4 * fadeProgress;
           }
 
-          spans.add(TextSpan(
-            text: chunk,
-            style: textStyle.copyWith(
-              color: Colors.white.withValues(alpha: wordAlpha),
-              shadows: glowAlpha > 0.0
-                  ? [
-                      Shadow(
-                        color: Colors.white.withValues(alpha: glowAlpha),
-                        blurRadius: 16,
-                      )
-                    ]
-                  : null,
+          spans.add(
+            TextSpan(
+              text: chunk,
+              style: textStyle.copyWith(
+                color: Colors.white.withValues(alpha: wordAlpha),
+                shadows: glowAlpha > 0.0
+                    ? [
+                        Shadow(
+                          color: Colors.white.withValues(alpha: glowAlpha),
+                          blurRadius: 16,
+                        ),
+                      ]
+                    : null,
+              ),
             ),
-          ));
+          );
 
           wordCount++;
         }
 
-        return Text.rich(
-          TextSpan(children: spans),
-          textAlign: TextAlign.left,
-        );
+        return Text.rich(TextSpan(children: spans), textAlign: TextAlign.left);
       },
     );
   }

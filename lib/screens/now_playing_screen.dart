@@ -982,7 +982,7 @@ class _DynamicBackground extends StatelessWidget {
                       useOldImageOnUrlChange: true,
                       fadeInDuration: const Duration(milliseconds: 300),
                       fadeOutDuration: Duration.zero,
-                      placeholder: (_, _) => Container(color: Colors.black),
+                      placeholder: (ctx, url) => Container(color: Colors.black),
                       errorWidget: (ctx, e, _) =>
                           Container(color: Colors.black),
                     ),
@@ -1138,7 +1138,8 @@ class _PlayerHeader extends StatelessWidget {
               Selector<PlayerProvider, double>(
                 selector: (_, p) => p.playbackSpeed,
                 builder: (context, speed, _) => IconButton(
-                  tooltip: 'Playback speed (${speed == 1.0 ? '1×' : '$speed×'})',
+                  tooltip:
+                      'Playback speed (${speed == 1.0 ? '1×' : '$speed×'})',
                   onPressed: () => _showSpeedDialog(context),
                   icon: speed != 1.0
                       ? Text(
@@ -1276,8 +1277,9 @@ class _PlayerHeader extends StatelessWidget {
           return Container(
             decoration: BoxDecoration(
               color: AppTheme.darkSurface,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
             ),
             child: SingleChildScrollView(
               child: Column(
@@ -1528,14 +1530,14 @@ class _AlbumArtworkSection extends StatelessWidget {
                             useOldImageOnUrlChange: true,
                             fadeInDuration: Duration.zero,
                             fadeOutDuration: Duration.zero,
-                            placeholder: (_, _) =>
+                            placeholder: (ctx, url) =>
                                 thumbnailUrl != null && thumbnailUrl!.isNotEmpty
                                 ? CachedNetworkImage(
                                     imageUrl: thumbnailUrl!,
                                     fit: BoxFit.contain,
                                     memCacheWidth: 200,
                                     fadeInDuration: Duration.zero,
-                                    errorWidget: (_, _, _) =>
+                                    errorWidget: (ctx, err, stack) =>
                                         _buildLoadingPlaceholder(),
                                   )
                                 : _buildLoadingPlaceholder(),
@@ -1707,8 +1709,9 @@ class _SwipeableAlbumArtwork extends StatelessWidget {
                 useOldImageOnUrlChange: true,
                 fadeInDuration: Duration.zero,
                 fadeOutDuration: Duration.zero,
-                placeholder: (_, _) => _buildPlaceholder(),
-                errorWidget: (_, _, _) => _buildNoArtPlaceholder(context),
+                placeholder: (ctx, url) => _buildPlaceholder(),
+                errorWidget: (ctx, err, stack) =>
+                    _buildNoArtPlaceholder(context),
               ),
       ),
     );
@@ -2098,7 +2101,7 @@ class _SongInfoState extends State<_SongInfo> {
                                 width: 50,
                                 height: 50,
                                 fit: BoxFit.cover,
-                                placeholder: (_, _) => Container(
+                                placeholder: (ctx, url) => Container(
                                   width: 50,
                                   height: 50,
                                   color: AppTheme.darkCard,
@@ -2705,18 +2708,30 @@ class _VolumeSliderState extends State<_VolumeSlider> {
                         _dragValue = currentVolume;
                       });
                       _updateVolumeFromPosition(
-                          details.localPosition, trackWidth, provider, isRemote);
+                        details.localPosition,
+                        trackWidth,
+                        provider,
+                        isRemote,
+                      );
                     },
                     onHorizontalDragUpdate: (details) {
                       _updateVolumeFromPosition(
-                          details.localPosition, trackWidth, provider, isRemote);
+                        details.localPosition,
+                        trackWidth,
+                        provider,
+                        isRemote,
+                      );
                     },
                     onHorizontalDragEnd: (details) {
                       setState(() => _isDragging = false);
                     },
                     onTapDown: (details) {
                       _updateVolumeFromPosition(
-                          details.localPosition, trackWidth, provider, isRemote);
+                        details.localPosition,
+                        trackWidth,
+                        provider,
+                        isRemote,
+                      );
                     },
                     child: SizedBox(
                       height: 40,
@@ -2753,7 +2768,8 @@ class _VolumeSliderState extends State<_VolumeSlider> {
 
                             Positioned(
                               left:
-                                  ((trackWidth * displayVolume.clamp(0.0, 1.0)) -
+                                  ((trackWidth *
+                                              displayVolume.clamp(0.0, 1.0)) -
                                           (_isDragging ? 10 : 6))
                                       .clamp(
                                         0.0,

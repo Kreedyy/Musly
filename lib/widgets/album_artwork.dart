@@ -7,8 +7,8 @@ import '../services/player_ui_settings_service.dart';
 
 bool isLocalFilePath(String? s) {
   if (s == null || s.isEmpty) return false;
-  if (s.startsWith('/')) return true; 
-  if (s.length > 2 && s[1] == ':') return true; 
+  if (s.startsWith('/')) return true;
+  if (s.length > 2 && s[1] == ':') return true;
   return false;
 }
 
@@ -112,7 +112,7 @@ class AlbumArtwork extends StatelessWidget {
         blur = size / 4;
         offset = Offset(0, size / 12);
         break;
-      default: 
+      default:
         opacity = isDark ? 0.22 : 0.14;
         blur = size / 10;
         offset = Offset(0, size / 30);
@@ -145,7 +145,6 @@ class AlbumArtwork extends StatelessWidget {
     );
 
     if (preserveAspectRatio) {
-      
       return Container(
         constraints: BoxConstraints(maxWidth: validSize),
         decoration: BoxDecoration(
@@ -164,7 +163,7 @@ class AlbumArtwork extends StatelessWidget {
       height: validSize,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(resolvedRadius),
-        
+
         boxShadow: resolvedShadow != null && validSize > 60
             ? [resolvedShadow]
             : null,
@@ -185,7 +184,7 @@ class AlbumArtwork extends StatelessWidget {
         artFile,
         key: ValueKey(coverArt),
         fit: BoxFit.contain,
-        errorBuilder: (_, _, _) => _buildPlaceholder(isDark),
+        errorBuilder: (ctx, err, stack) => _buildPlaceholder(isDark),
       );
     }
 
@@ -205,8 +204,8 @@ class AlbumArtwork extends StatelessWidget {
           fadeInDuration: const Duration(milliseconds: 100),
           fadeOutDuration: Duration.zero,
           useOldImageOnUrlChange: true,
-          placeholder: (_, _) => _buildPlaceholder(isDark),
-          errorWidget: (_, _, _) => _buildPlaceholder(isDark),
+          placeholder: (ctx, url) => _buildPlaceholder(isDark),
+          errorWidget: (ctx, err, stack) => _buildPlaceholder(isDark),
         );
       },
     );
@@ -223,7 +222,7 @@ class AlbumArtwork extends StatelessWidget {
         fit: BoxFit.cover,
         cacheWidth: cacheSize,
         cacheHeight: cacheSize,
-        errorBuilder: (_, _, _) => _buildPlaceholder(isDark),
+        errorBuilder: (ctx, err, stack) => _buildPlaceholder(isDark),
       );
     }
 
@@ -247,8 +246,8 @@ class AlbumArtwork extends StatelessWidget {
           fadeInDuration: const Duration(milliseconds: 100),
           fadeOutDuration: Duration.zero,
           useOldImageOnUrlChange: true,
-          placeholder: (_, _) => _buildPlaceholder(isDark),
-          errorWidget: (_, _, _) => _buildPlaceholder(isDark),
+          placeholder: (ctx, url) => _buildPlaceholder(isDark),
+          errorWidget: (ctx, err, stack) => _buildPlaceholder(isDark),
         );
       },
     );

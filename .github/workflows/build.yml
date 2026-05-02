@@ -123,9 +123,10 @@ jobs:
       
       - name: Create IPA
         run: |
-          cd build/ios/iphoneos
+          ls -la build/ios/
+          cd build/ios/Release-iphoneos
           mkdir -p Payload
-          cp -r Runner.app Payload/
+          cp -r *.app Payload/
           zip -r ../../../musly-ios.ipa Payload
           cd ../../..
       

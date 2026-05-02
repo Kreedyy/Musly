@@ -63,7 +63,9 @@ class SongTile extends StatelessWidget {
           title: Text(
             song.title,
             style: theme.textTheme.bodyLarge?.copyWith(
-              color: isCurrentSong ? Theme.of(context).colorScheme.primary : null,
+              color: isCurrentSong
+                  ? Theme.of(context).colorScheme.primary
+                  : null,
               fontWeight: isCurrentSong ? FontWeight.w600 : FontWeight.normal,
             ),
             maxLines: 1,
@@ -87,8 +89,8 @@ class SongTile extends StatelessWidget {
         child: Center(
           child: isCurrentSong
               ? Selector<PlayerProvider, bool>(
-                  selector: (_, p) => p.isPlaying,
-                  builder: (_, isPlaying, _) => AnimatedEqualizer(
+                  selector: (ctx, p) => p.isPlaying,
+                  builder: (ctx, isPlaying, __) => AnimatedEqualizer(
                     color: Theme.of(context).colorScheme.primary,
                     isPlaying: isPlaying,
                   ),
@@ -119,8 +121,8 @@ class SongTile extends StatelessWidget {
                     ),
                     child: Center(
                       child: Selector<PlayerProvider, bool>(
-                        selector: (_, p) => p.isPlaying,
-                        builder: (_, isPlaying, _) => AnimatedEqualizer(
+                        selector: (ctx, p) => p.isPlaying,
+                        builder: (ctx, isPlaying, __) => AnimatedEqualizer(
                           color: Colors.white,
                           isPlaying: isPlaying,
                         ),
@@ -191,7 +193,9 @@ class SongTile extends StatelessWidget {
             child: Icon(
               CupertinoIcons.heart_fill,
               size: 14,
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
+              color: Theme.of(
+                context,
+              ).colorScheme.primary.withValues(alpha: 0.7),
             ),
           ),
         if (showDuration)
@@ -319,7 +323,9 @@ class _SongOptionsSheetState extends State<_SongOptionsSheet> {
                       title: _isStarred
                           ? 'Remove from Liked Songs'
                           : 'Add to Liked Songs',
-                      iconColor: _isStarred ? Theme.of(context).colorScheme.primary : null,
+                      iconColor: _isStarred
+                          ? Theme.of(context).colorScheme.primary
+                          : null,
                       onTap: () async {
                         await _toggleFavorite(context);
                         if (context.mounted) {
@@ -753,17 +759,17 @@ class _SongOptionsSheetState extends State<_SongOptionsSheet> {
 
     final artistId = widget.song.artistId;
     if (artistId != null && artistId.isNotEmpty) {
-      nav.push(MaterialPageRoute(
-        builder: (_) => ArtistScreen(artistId: artistId),
-      ));
+      nav.push(
+        MaterialPageRoute(builder: (_) => ArtistScreen(artistId: artistId)),
+      );
     }
   }
 
   void _pushArtist(NavigatorState nav, ArtistRef artist) {
     if (artist.id.isNotEmpty) {
-      nav.push(MaterialPageRoute(
-        builder: (_) => ArtistScreen(artistId: artist.id),
-      ));
+      nav.push(
+        MaterialPageRoute(builder: (_) => ArtistScreen(artistId: artist.id)),
+      );
     }
   }
 
@@ -908,7 +914,10 @@ class _OptionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Icon(icon, color: iconColor ?? Theme.of(context).colorScheme.primary),
+      leading: Icon(
+        icon,
+        color: iconColor ?? Theme.of(context).colorScheme.primary,
+      ),
       title: Text(title),
       onTap: onTap,
     );
