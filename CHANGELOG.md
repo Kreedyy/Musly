@@ -5,6 +5,45 @@ All notable changes to Musly will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.9] - 2026-05-02
+
+### Added
+- **CI/CD Auto-Release**: Fully automated GitHub Actions workflow
+  - Automated builds and releases for Android, iOS, Windows, Linux, and macOS
+  - Windows NSIS installer (`musly-setup.exe`) automatically generated
+  - Fixed ALSA dependency for Linux builds
+  - Automatic artifact upload and GitHub Release creation
+- **Privacy Policy Dialog**: Implemented dialog for privacy policy acceptance
+- **Multi-Artist Support**: Support for multiple artists from Navidrome
+  - Correct display of multiple artists for single songs
+  - Multi-artist picker in song context menu
+- **Album Download Button**: Button to download entire album from album screen
+- **Swipe Gesture**: Swipe gesture to change songs in player
+  - Carousel animation with haptic feedback
+  - Forward/backward swipe navigation between tracks
+- **Artist to Queue**: Added "Add artist to queue" button on artist screens
+- **Tap Cover for Lyrics**: Tap album cover in player to show lyrics
+- **Analytics**: Countly Analytics and crash reports (https://musly.devid.lol/privacy)
+
+### Changed
+- **Flutter 3.41.7**: Updated Flutter to version 3.41.7
+- **Dart SDK Constraint**: Updated constraint to `>=3.0.0 <4.0.0`
+- **Code Quality**: Refactored duplicate `_` variables in callbacks for Dart 3 compatibility
+- **iOS Cleanup**: Removed unnecessary iOS example files
+
+### Fixed
+- **UPnP Volume Overlay**: Fixed UPnP hardware volume jump
+- **UPnP Auto-Disconnect**: Automatic renderer disconnection after 30s of connection loss
+- **Shuffle History**: Back button tracks playback history with shuffle active
+- **UPnP Remote Playback**: Fixed UPnP remote playback state management and UI routing
+- **Recently Added Sort**: Fixed "Recently Added" sorting by server creation date
+- **Download Library Bug**: Fixed partially persisted library bug during refresh
+- **Context Menu**: Fixed stale context and scrollable artists sheet
+- **Playlist Creation**: Library refresh after playlist creation from "now playing" menu
+
+### Improved
+- **Translations**: Crowdin translation updates (more languages supported)
+
 ## [1.0.8] - 2026-03-08
 
 ### Added

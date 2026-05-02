@@ -174,11 +174,20 @@ jobs:
             --dart-define=COUNTLY_SERVER_URL="$env:COUNTLY_SERVER_URL" `
             --dart-define=COUNTLY_APP_KEY="$key" 2>&1 | Select-String -Pattern $key -NotMatch
       
+      - name: Install NSIS
+        run: choco install nsis -y
+
+      - name: Build NSIS Installer
+        run: |
+          makensis installer.nsi
+
       - name: Upload Windows Build
         uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: build/windows/x64/runner/Release/
+          path: |
+            build/windows/x64/runner/Release/
+            musly-setup.exe
 
   # Linux Build
   build-linux:
@@ -190,7 +199,7 @@ jobs:
       - name: Install Linux dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev libasound2-dev
       
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -317,6 +326,10 @@ jobs:
       - name: Package Windows
         run: |
           cd artifacts/windows
+          # Se l'installer esiste, lo includiamo
+          if [ -f ../../musly-setup.exe ]; then
+            cp ../../musly-setup.exe ./musly-setup.exe
+          fi
           zip -r ../../musly-windows.zip .
           cd ../..
 
@@ -351,7 +364,8 @@ jobs:
             - `musly-ios.ipa` (sideload with AltStore, Sideloadly, or similar — not signed)
 
             **Windows:**
-            - `musly-windows-setup.exe` (setup installer, run to install Musly)
+            - `musly-setup.exe` (setup installer, run to install Musly)
+            - `musly-windows.zip` (portable version, extract and run)
 
             **macOS:**
             - `musly-macos.dmg` (drag Musly.app to Applications — not notarized)
@@ -367,6 +381,7 @@ jobs:
           files: |
             artifacts/android/*.apk
             artifacts/ios/*.ipa
+            musly-setup.exe
             musly-windows.zip
             musly-linux-x64.tar.gz
             musly-macos.zip

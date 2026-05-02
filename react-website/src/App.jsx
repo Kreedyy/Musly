@@ -15,6 +15,19 @@ function App() {
 
   // Check URL path on mount for direct /privacy access
   useEffect(() => {
+    // Check if we have a saved path from 404.html redirect
+    const savedPath = sessionStorage.getItem('spa_path')
+    if (savedPath) {
+      sessionStorage.removeItem('spa_path')
+      if (savedPath === '/privacy') {
+        setShowPrivacy(true)
+        // Update URL to match without page reload
+        window.history.replaceState(null, '', '/privacy')
+        return
+      }
+    }
+
+    // Direct access check
     if (window.location.pathname === '/privacy') {
       setShowPrivacy(true)
     }

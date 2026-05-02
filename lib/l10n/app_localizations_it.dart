@@ -1497,4 +1497,33 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get aboutLinkDiscord => 'Unisciti Alla Community Di Discord';
+
+  @override
+  String get sectionAnalyticsPrivacy => 'Analytics e Privacy';
+
+  @override
+  String get anonymousAnalytics => 'Analytics Anonime';
+
+  @override
+  String get anonymousAnalyticsSubtitle =>
+      'Aiuta a migliorare Musly con segnalazioni anonime di crash e statistiche d\'uso';
+
+  @override
+  String get deviceId => 'ID Dispositivo';
+
+  @override
+  String deviceIdAnonymous(String id) {
+    return 'ID Anonimo: $id';
+  }
+
+  @override
+  String get deviceIdDisabled =>
+      'Abilita le analytics per vedere il tuo ID dispositivo anonimo';
+
+  @override
+  String get aboutDeviceId => 'Informazioni ID Dispositivo';
+
+  @override
+  String get aboutDeviceIdSubtitle =>
+      'Questo è un identificatore anonimo generato dall\'app. Non può essere collegato alla tua identità personale ed è usato solo per le analytics.';
 }

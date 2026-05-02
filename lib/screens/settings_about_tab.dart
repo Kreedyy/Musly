@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
@@ -32,7 +33,7 @@ class _SettingsAboutTabState extends State<SettingsAboutTab> {
     setState(() {
       _analyticsEnabled = analytics.isEnabled;
       _hasRated = prefs.getBool('has_rated_app') ?? false;
-      _deviceId = deviceId ?? 'anonymous-device';
+      _deviceId = deviceId ?? 'not-available';
     });
   }
 
@@ -175,9 +176,18 @@ class _SettingsAboutTabState extends State<SettingsAboutTab> {
               trailing: _analyticsEnabled
                   ? IconButton(
                       icon: const Icon(CupertinoIcons.doc_on_doc, size: 18),
+                      tooltip: 'Copy device ID',
                       onPressed: () {
-                        // Copy device ID to clipboard
-                        // Would need to implement clipboard functionality
+                        if (_deviceId != null) {
+                          Clipboard.setData(ClipboardData(text: _deviceId!));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Device ID copied to clipboard'),
+                              duration: Duration(seconds: 2),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
                       },
                     )
                   : null,
