@@ -196,8 +196,15 @@ class MuslyApp extends StatelessWidget {
         final ThemeData dark;
 
         if (lightDynamic != null && darkDynamic != null) {
-          final harmonisedLight = lightDynamic.harmonized();
-          final harmonisedDark = darkDynamic.harmonized();
+          // Override dynamic color scheme with user-selected accent color
+          final harmonisedLight = lightDynamic.harmonized().copyWith(
+            primary: accent,
+            secondary: accent.withAlpha(200),
+          );
+          final harmonisedDark = darkDynamic.harmonized().copyWith(
+            primary: accent,
+            secondary: accent.withAlpha(200),
+          );
           light = AppTheme.lightThemeFromScheme(harmonisedLight);
           dark = AppTheme.darkThemeFromScheme(harmonisedDark);
         } else {
