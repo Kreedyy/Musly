@@ -58,7 +58,12 @@ class UpnpService extends ChangeNotifier {
   Duration get rendererDuration => _rendererDuration;
   String get rendererState => _rendererState;
   bool get isRendererPlaying => _rendererState == 'PLAYING';
-  int get volume => _volume; 
+  int get volume => _volume;
+  int get consecutivePollErrors => _consecutivePollErrors;
+
+  /// Called when the renderer becomes unreachable after 30 consecutive poll
+  /// failures (~30 s). The service has already called disconnect() internally.
+  VoidCallback? onRendererLost;
 
   List<UpnpDevice> get devices => List.unmodifiable(_devices);
   UpnpDevice? get connectedDevice => _connectedDevice;
@@ -71,8 +76,15 @@ class UpnpService extends ChangeNotifier {
 
   final _dio = Dio(
     BaseOptions(
-      connectTimeout: const Duration(seconds: 5),
-      receiveTimeout: const Duration(seconds: 5),
+      connectTimeout: const Duration(seconds: 3),
+      receiveTimeout: const Duration(seconds: 3),
+      // Force a fresh TCP connection for every SOAP request.  Many UPnP
+      // renderer HTTP servers (upmpdcli, BubbleUPnP Server, etc.) close
+      // their end of the TCP socket after a short keepalive timeout (~5–10 s).
+      // Without this header Dio's connection pool reuses the dead socket, the
+      // next write throws a SocketException, getPlaybackState() swallows it
+      // silently, and the progress bar freezes for the rest of the song.
+      headers: {'Connection': 'close'},
     ),
   );
 
@@ -227,14 +239,15 @@ class UpnpService extends ChangeNotifier {
 
   Future<bool> connect(UpnpDevice device) async {
     try {
-      
+
       await _soap(device.avTransportUrl, 'GetTransportInfo', '');
       _connectedDevice = device;
       debugPrint('UPnP: Connected to ${device.friendlyName}');
-      
+
       if (device.renderingControlUrl != null) {
         _volume = await getVolume();
       }
+      _consecutivePollErrors = 0;
       _startPolling();
       notifyListeners();
       return true;
@@ -253,6 +266,7 @@ class UpnpService extends ChangeNotifier {
     _rendererPosition = Duration.zero;
     _rendererDuration = Duration.zero;
     _volume = -1;
+    _consecutivePollErrors = 0;
     notifyListeners();
 
     if (device != null) {
@@ -276,9 +290,10 @@ class UpnpService extends ChangeNotifier {
 
   bool _isPolling = false;
   int _pollCount = 0;
+  int _consecutivePollErrors = 0;
 
   Future<void> _poll() async {
-    if (_isPolling) return; 
+    if (_isPolling) return;
     final device = _connectedDevice;
     if (device == null) return;
     _isPolling = true;
@@ -286,7 +301,31 @@ class UpnpService extends ChangeNotifier {
 
     try {
       final state = await getPlaybackState();
-      if (state == null) return;
+      if (state == null) {
+        // getPlaybackState() caught an exception internally and returned null.
+        _consecutivePollErrors++;
+        notifyListeners();
+        if (_consecutivePollErrors == 1 || _consecutivePollErrors % 5 == 0) {
+          debugPrint(
+            'UPnP: poll failed $_consecutivePollErrors time(s) in a row '
+            '— renderer may be unreachable',
+          );
+        }
+        // 30 consecutive failures (~30 s) — treat the renderer as gone.
+        // Network hiccups and AP roaming typically resolve within 10–15 s,
+        // so 30 s gives enough headroom without leaving the user stuck.
+        if (_consecutivePollErrors >= 30) {
+          debugPrint('UPnP: 30 consecutive poll failures — auto-disconnecting renderer');
+          disconnect();
+          onRendererLost?.call();
+        }
+        return;
+      }
+
+      if (_consecutivePollErrors != 0) {
+        _consecutivePollErrors = 0;
+        notifyListeners();
+      }
 
       bool changed = false;
       if (state.transportState != _rendererState) {
@@ -314,7 +353,14 @@ class UpnpService extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
+      _consecutivePollErrors++;
+      notifyListeners();
       debugPrint('UPnP: poll error: $e');
+      if (_consecutivePollErrors >= 30) {
+        debugPrint('UPnP: 30 consecutive poll failures — auto-disconnecting renderer');
+        disconnect();
+        onRendererLost?.call();
+      }
     } finally {
       _isPolling = false;
     }
@@ -360,6 +406,7 @@ class UpnpService extends ChangeNotifier {
     String? album,
     String? albumArtUrl,
     int? durationSecs,
+    String? contentType,
   }) async {
     final device = _connectedDevice;
     if (device == null) {
@@ -385,6 +432,7 @@ class UpnpService extends ChangeNotifier {
       album: album,
       albumArtUrl: albumArtUrl,
       durationSecs: durationSecs,
+      contentType: contentType,
     );
     debugPrint('UPnP: SetAVTransportURI…');
     await _soap(
@@ -676,6 +724,35 @@ class UpnpService extends ChangeNotifier {
     }
   }
 
+  /// Returns a MIME type string for [suffix] (e.g. 'mp3' → 'audio/mpeg').
+  /// Returns null when the suffix is unknown so callers can fall back to '*'.
+  static String? mimeTypeFromSuffix(String? suffix) {
+    switch (suffix?.toLowerCase()) {
+      case 'mp3':
+        return 'audio/mpeg';
+      case 'flac':
+        return 'audio/flac';
+      case 'ogg':
+      case 'oga':
+        return 'audio/ogg';
+      case 'opus':
+        return 'audio/opus';
+      case 'aac':
+        return 'audio/aac';
+      case 'm4a':
+        return 'audio/mp4';
+      case 'wav':
+        return 'audio/wav';
+      case 'wma':
+        return 'audio/x-ms-wma';
+      case 'aiff':
+      case 'aif':
+        return 'audio/aiff';
+      default:
+        return null;
+    }
+  }
+
   static String _didl({
     required String title,
     required String artist,
@@ -683,6 +760,7 @@ class UpnpService extends ChangeNotifier {
     String? album,
     String? albumArtUrl,
     int? durationSecs,
+    String? contentType,
   }) {
     String esc(String s) => s
         .replaceAll('&', '&amp;')
@@ -690,7 +768,10 @@ class UpnpService extends ChangeNotifier {
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;');
 
-    const protocol = 'http-get:*:*:*';
+    // Use the provided MIME type; fall back to wildcard so strict renderers
+    // (e.g. moode / upmpdcli with "check metadata" enabled) can validate.
+    final mimeType = contentType ?? '*';
+    final protocol = 'http-get:*:$mimeType:*';
 
     final durationAttr = durationSecs != null
         ? ' duration="${_formatTimeSecs(durationSecs)}"'

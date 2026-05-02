@@ -1,0 +1,389 @@
+name: Build & Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.8)'
+        required: true
+        type: string
+
+env:
+  FLUTTER_VERSION: '3.41.7'
+
+jobs:
+  # Validate secrets exist
+  check-secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check required secrets
+        run: |
+          if [ -z "${{ secrets.COUNTLY_SERVER_URL }}" ]; then
+            echo "⚠️ Warning: COUNTLY_SERVER_URL secret not set. Analytics will be disabled."
+          else
+            echo "✅ COUNTLY_SERVER_URL secret is configured"
+          fi
+          
+          if [ -z "${{ secrets.COUNTLY_APP_KEY }}" ]; then
+            echo "⚠️ Warning: COUNTLY_APP_KEY secret not set. Analytics will be disabled."
+          else
+            echo "✅ COUNTLY_APP_KEY secret is configured (masked)"
+          fi
+        continue-on-error: true
+
+  # Android Build
+  build-android:
+    runs-on: ubuntu-latest
+    needs: check-secrets
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+      
+      - name: Setup Dart SDK
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 'stable'
+      
+      - name: Verify Dart SDK Version
+        run: |
+          DART_VERSION=$(dart --version | grep -oP 'Dart SDK version: \K[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          echo "✅ Dart SDK version: $DART_VERSION"
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Build APKs (with encrypted analytics)
+        env:
+          COUNTLY_SERVER_URL: ${{ secrets.COUNTLY_SERVER_URL }}
+          COUNTLY_APP_KEY: ${{ secrets.COUNTLY_APP_KEY }}
+        run: |
+          # Mask secrets in logs (GitHub does this automatically, but we double-check)
+          echo "::add-mask::$COUNTLY_APP_KEY"
+          echo "Building with analytics configured..."
+          flutter build apk --release --split-per-abi \
+            --dart-define=COUNTLY_SERVER_URL="$COUNTLY_SERVER_URL" \
+            --dart-define=COUNTLY_APP_KEY="$COUNTLY_APP_KEY" 2>&1 | grep -v "$COUNTLY_APP_KEY" || true
+      
+      - name: Build AppBundle (with encrypted analytics)
+        env:
+          COUNTLY_SERVER_URL: ${{ secrets.COUNTLY_SERVER_URL }}
+          COUNTLY_APP_KEY: ${{ secrets.COUNTLY_APP_KEY }}
+        run: |
+          echo "::add-mask::$COUNTLY_APP_KEY"
+          flutter build appbundle --release \
+            --dart-define=COUNTLY_SERVER_URL="$COUNTLY_SERVER_URL" \
+            --dart-define=COUNTLY_APP_KEY="$COUNTLY_APP_KEY" 2>&1 | grep -v "$COUNTLY_APP_KEY" || true
+      
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: build/app/outputs/flutter-apk/*.apk
+
+  # iOS Build (macOS required)
+  build-ios:
+    runs-on: macos-latest
+    needs: check-secrets
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+      
+      - name: Setup Dart SDK
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 'stable'
+      
+      - name: Verify Dart SDK Version
+        run: |
+          DART_VERSION=$(dart --version | grep -oP 'Dart SDK version: \K[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          echo "✅ Dart SDK version: $DART_VERSION"
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Build iOS (no codesign for testing)
+        env:
+          COUNTLY_SERVER_URL: ${{ secrets.COUNTLY_SERVER_URL }}
+          COUNTLY_APP_KEY: ${{ secrets.COUNTLY_APP_KEY }}
+        run: |
+          echo "::add-mask::$COUNTLY_APP_KEY"
+          flutter build ios --release --no-codesign \
+            --dart-define=COUNTLY_SERVER_URL="$COUNTLY_SERVER_URL" \
+            --dart-define=COUNTLY_APP_KEY="$COUNTLY_APP_KEY" 2>&1 | grep -v "$COUNTLY_APP_KEY" || true
+      
+      - name: Create IPA
+        run: |
+          ls -la build/ios/
+          cd build/ios/Release-iphoneos
+          mkdir -p Payload
+          cp -r *.app Payload/
+          zip -r ../../../musly-ios.ipa Payload
+          cd ../../..
+      
+      - name: Upload iOS Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build
+          path: musly-ios.ipa
+
+  # Windows Build
+  build-windows:
+    runs-on: windows-latest
+    needs: check-secrets
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+      
+      - name: Setup Dart SDK
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 'stable'
+      
+      - name: Verify Dart SDK Version
+        shell: pwsh
+        run: |
+          $DART_VERSION = (dart --version 2>&1 | Select-String -Pattern 'Dart SDK version: ([0-9]+\.[0-9]+\.[0-9]+)').Matches.Groups[1].Value
+          Write-Host "✅ Dart SDK version: $DART_VERSION"
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Build Windows
+        env:
+          COUNTLY_SERVER_URL: ${{ secrets.COUNTLY_SERVER_URL }}
+          COUNTLY_APP_KEY: ${{ secrets.COUNTLY_APP_KEY }}
+        run: |
+          $key = $env:COUNTLY_APP_KEY
+          Write-Host "::add-mask::$key"
+          flutter build windows --release `
+            --dart-define=COUNTLY_SERVER_URL="$env:COUNTLY_SERVER_URL" `
+            --dart-define=COUNTLY_APP_KEY="$key" 2>&1 | Select-String -Pattern $key -NotMatch
+      
+      - name: Install NSIS
+        run: choco install nsis -y
+
+      - name: Build NSIS Installer
+        run: |
+          & "C:\Program Files (x86)\NSIS\makensis.exe" installer.nsi
+
+      - name: Upload Windows Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: |
+            build/windows/x64/runner/Release/
+            musly-setup.exe
+
+  # Linux Build
+  build-linux:
+    runs-on: ubuntu-latest
+    needs: check-secrets
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev libasound2-dev
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+      
+      - name: Setup Dart SDK
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 'stable'
+      
+      - name: Verify Dart SDK Version
+        run: |
+          DART_VERSION=$(dart --version | grep -oP 'Dart SDK version: \K[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          echo "✅ Dart SDK version: $DART_VERSION"
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Build Linux
+        env:
+          COUNTLY_SERVER_URL: ${{ secrets.COUNTLY_SERVER_URL }}
+          COUNTLY_APP_KEY: ${{ secrets.COUNTLY_APP_KEY }}
+        run: |
+          echo "::add-mask::$COUNTLY_APP_KEY"
+          flutter build linux --release \
+            --dart-define=COUNTLY_SERVER_URL="$COUNTLY_SERVER_URL" \
+            --dart-define=COUNTLY_APP_KEY="$COUNTLY_APP_KEY" 2>&1 | grep -v "$COUNTLY_APP_KEY" || true
+      
+      - name: Upload Linux Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: build/linux/x64/release/bundle/
+
+  # macOS Build
+  build-macos:
+    runs-on: macos-latest
+    needs: check-secrets
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+      
+      - name: Setup Dart SDK
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 'stable'
+      
+      - name: Verify Dart SDK Version
+        run: |
+          DART_VERSION=$(dart --version | grep -oP 'Dart SDK version: \K[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          echo "✅ Dart SDK version: $DART_VERSION"
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Build macOS
+        env:
+          COUNTLY_SERVER_URL: ${{ secrets.COUNTLY_SERVER_URL }}
+          COUNTLY_APP_KEY: ${{ secrets.COUNTLY_APP_KEY }}
+        run: |
+          echo "::add-mask::$COUNTLY_APP_KEY"
+          flutter build macos --release \
+            --dart-define=COUNTLY_SERVER_URL="$COUNTLY_SERVER_URL" \
+            --dart-define=COUNTLY_APP_KEY="$COUNTLY_APP_KEY" 2>&1 | grep -v "$COUNTLY_APP_KEY" || true
+      
+      - name: Upload macOS Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-build
+          path: build/macos/Build/Products/Release/
+
+  # Create Release with all artifacts
+  release:
+    runs-on: ubuntu-latest
+    needs: [build-android, build-ios, build-windows, build-linux, build-macos]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create Tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${{ github.event.inputs.version }}" -m "Release v${{ github.event.inputs.version }}"
+          git push origin "v${{ github.event.inputs.version }}"
+
+      - name: Download Android Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: android-apk
+          path: artifacts/android/
+
+      - name: Download iOS Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ios-build
+          path: artifacts/ios/
+
+      - name: Download Windows Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-build
+          path: artifacts/windows/
+
+      - name: Download Linux Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-build
+          path: artifacts/linux/
+
+      - name: Download macOS Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-build
+          path: artifacts/macos/
+
+      - name: Package Windows
+        run: |
+          cd artifacts/windows
+          # Se l'installer esiste, lo includiamo
+          if [ -f ../../musly-setup.exe ]; then
+            cp ../../musly-setup.exe ./musly-setup.exe
+          fi
+          zip -r ../../musly-windows.zip .
+          cd ../..
+
+      - name: Package Linux
+        run: |
+          cd artifacts/linux
+          tar -czf ../../musly-linux-x64.tar.gz .
+          cd ../..
+
+      - name: Package macOS
+        run: |
+          cd artifacts/macos
+          zip -r ../../musly-macos.zip .
+          cd ../..
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.event.inputs.version }}
+          name: Musly v${{ github.event.inputs.version }}
+          body: |
+            ## 🎉 Musly v${{ github.event.inputs.version }}
+
+            ### 📦 Downloads
+
+            **Android:**
+            - ARM64: `app-arm64-v8a-release.apk` (recommended for most devices)
+            - ARMv7: `app-armeabi-v7a-release.apk` (for older devices)
+            - x86_64: `app-x86_64-release.apk` (for emulators)
+
+            **iOS:**
+            - `musly-ios.ipa` (sideload with AltStore, Sideloadly, or similar — not signed)
+
+            **Windows:**
+            - `musly-setup.exe` (setup installer, run to install Musly)
+            - `musly-windows.zip` (portable version, extract and run)
+
+            **macOS:**
+            - `musly-macos.dmg` (drag Musly.app to Applications — not notarized)
+
+            **Linux:**
+            - `musly-linux-x64.tar.gz` (extract and run musly)
+
+            ### 📝 Changelog
+            See [CHANGELOG.md](https://github.com/dddevid/Musly/blob/master/CHANGELOG.md)
+
+            ### 🌍 Translations
+            Contribute translations at [Crowdin](https://crowdin.com/project/musly)
+          files: |
+            artifacts/android/*.apk
+            artifacts/ios/*.ipa
+            musly-setup.exe
+            musly-windows.zip
+            musly-linux-x64.tar.gz
+            musly-macos.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

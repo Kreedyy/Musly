@@ -14,7 +14,6 @@ class ReleaseAsset {
 }
 
 class ReleaseInfo {
-  
   final String version;
   final String tagName;
   final String htmlUrl;
@@ -47,8 +46,7 @@ class ReleaseInfo {
 }
 
 class UpdateService {
-  
-  static const String currentVersion = '1.0.8';
+  static const String currentVersion = '1.0.9';
 
   static const String _apiUrl =
       'https://api.github.com/repos/dddevid/Musly/releases/latest';
@@ -89,8 +87,12 @@ class UpdateService {
       final r = parse(remote);
       final c = parse(current);
       final len = r.length > c.length ? r.length : c.length;
-      while (r.length < len) { r.add(0); }
-      while (c.length < len) { c.add(0); }
+      while (r.length < len) {
+        r.add(0);
+      }
+      while (c.length < len) {
+        c.add(0);
+      }
 
       for (int i = 0; i < len; i++) {
         if (r[i] > c[i]) return true;

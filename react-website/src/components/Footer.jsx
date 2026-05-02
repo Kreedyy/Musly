@@ -39,7 +39,7 @@ const sections = {
     },
 }
 
-export default function Footer() {
+export default function Footer({ onPrivacyClick }) {
     return (
         <footer className="footer">
             <div className="container">
@@ -100,6 +100,11 @@ export default function Footer() {
                     <p className="footer-copy">
                         © {new Date().getFullYear()} Musly · CC BY-NC-SA 4.0 License
                     </p>
+                    <div className="footer-legal">
+                        <button onClick={onPrivacyClick} className="footer-legal-link">
+                            Privacy Policy
+                        </button>
+                    </div>
                     <p className="footer-made">
                         Made with <Heart size={13} fill="#ff2d55" color="#ff2d55" /> in Italy 🇮🇹 by an Albanian developer 🇦🇱
                     </p>

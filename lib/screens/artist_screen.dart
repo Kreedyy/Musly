@@ -43,13 +43,12 @@ class _ArtistScreenState extends State<ArtistScreen> {
       List<Album> albums = [];
 
       if (libraryProvider.isLocalOnlyMode) {
-        
         artist = libraryProvider.artists.firstWhere(
           (a) => a.id == widget.artistId,
           orElse: () => Artist(id: widget.artistId, name: 'Unknown Artist'),
         );
         albums = await libraryProvider.getArtistAlbums(widget.artistId);
-        
+
         topSongs = libraryProvider.cachedAllSongs
             .where((s) => s.artistId == widget.artistId)
             .toList();
@@ -78,7 +77,10 @@ class _ArtistScreenState extends State<ArtistScreen> {
     if (_albums.isEmpty) return;
 
     final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
-    final libraryProvider = Provider.of<LibraryProvider>(context, listen: false);
+    final libraryProvider = Provider.of<LibraryProvider>(
+      context,
+      listen: false,
+    );
     final subsonicService = libraryProvider.subsonicService;
 
     final messenger = ScaffoldMessenger.of(context);
@@ -89,8 +91,8 @@ class _ArtistScreenState extends State<ArtistScreen> {
       for (final album in _albums) {
         final albumSongs = libraryProvider.isLocalOnlyMode
             ? libraryProvider.cachedAllSongs
-                .where((s) => s.albumId == album.id)
-                .toList()
+                  .where((s) => s.albumId == album.id)
+                  .toList()
             : await subsonicService.getAlbumSongs(album.id);
 
         songsToQueue.addAll(albumSongs);
@@ -102,7 +104,8 @@ class _ArtistScreenState extends State<ArtistScreen> {
 
       if (!mounted) return;
 
-      final addedToQueueMessage = loc?.addedArtistToQueue ?? 'Added artist to Queue';
+      final addedToQueueMessage =
+          loc?.addedArtistToQueue ?? 'Added artist to Queue';
       messenger.showSnackBar(
         SnackBar(
           content: Text(addedToQueueMessage),
@@ -112,7 +115,8 @@ class _ArtistScreenState extends State<ArtistScreen> {
     } catch (e) {
       if (!mounted) return;
 
-      final addedToQueueErrorMessage = loc?.addedArtistToQueueError ?? 'Failed adding artist to Queue';
+      final addedToQueueErrorMessage =
+          loc?.addedArtistToQueueError ?? 'Failed adding artist to Queue';
       messenger.showSnackBar(
         SnackBar(
           content: Text(addedToQueueErrorMessage),
@@ -242,8 +246,8 @@ class _ArtistScreenState extends State<ArtistScreen> {
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
+                          const SliverGridDelegateWithMaxCrossAxisExtent(
+                            maxCrossAxisExtent: 180,
                             childAspectRatio: 0.8,
                             crossAxisSpacing: 16,
                             mainAxisSpacing: 16,
@@ -253,7 +257,7 @@ class _ArtistScreenState extends State<ArtistScreen> {
                         final album = _albums[index];
                         return AlbumCard(
                           album: album,
-                          size: (MediaQuery.of(context).size.width - 48) / 2,
+                          size: double.infinity,
                           onTap: () => NavigationHelper.push(
                             context,
                             AlbumScreen(albumId: album.id),

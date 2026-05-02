@@ -33,11 +33,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
       listen: false,
     );
 
-    if (!recommendationService.enabled ||
-        libraryProvider.cachedAllSongs.isEmpty) {
+    if (libraryProvider.cachedAllSongs.isEmpty) {
       setState(() => _isLoading = false);
       return;
     }
+
+    // Load history even if recommendations are disabled
+    // The profiles are still tracked even when recommendations are off
 
     final profiles = recommendationService.profiles;
     final allSongs = libraryProvider.cachedAllSongs;

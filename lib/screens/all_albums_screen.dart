@@ -79,8 +79,8 @@ class _AllAlbumsScreenState extends State<AllAlbumsScreen> {
           : GridView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.all(16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 180,
                 childAspectRatio: 0.7,
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,

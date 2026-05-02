@@ -8,11 +8,11 @@
 
 **Musly** is a free **Navidrome client** and **Subsonic music player** with a beautiful Apple Music-inspired interface. Stream your self-hosted music library from Navidrome, Subsonic, or Airsonic servers on Android, iOS, Windows, Linux, and macOS.
 
-🌐 **Website:** [musly.devid.ink](https://musly.devid.ink/)
+🌐 **Website:** [musly.devid.lol](https://musly.devid.lol/)
 
-[![Download Musly](https://img.shields.io/badge/Download-Musly%20v1.0.8-fa243c?style=for-the-badge&logo=github)](https://github.com/dddevid/Musly/releases/tag/v1.0.8)
-[![Navidrome Client](https://img.shields.io/badge/Navidrome-Client-blue?style=for-the-badge)](https://musly.devid.ink)
-[![Subsonic Client](https://img.shields.io/badge/Subsonic-Client-green?style=for-the-badge)](https://musly.devid.ink)
+[![Download Musly](https://img.shields.io/badge/Download-Musly%20v1.0.9-fa243c?style=for-the-badge&logo=github)](https://github.com/dddevid/Musly/releases/tag/v1.0.9)
+[![Navidrome Client](https://img.shields.io/badge/Navidrome-Client-blue?style=for-the-badge)](https://musly.devid.lol)
+[![Subsonic Client](https://img.shields.io/badge/Subsonic-Client-green?style=for-the-badge)](https://musly.devid.lol)
 
 ## Why Choose Musly as Your Navidrome Client?
 
@@ -49,7 +49,7 @@ Musly is a cross-platform application that supports:
 ## Download Musly - Best Navidrome Client
 
 You can download the latest release of Musly (the best Navidrome client):
-👉 **[Download Musly v1.0.8 - Navidrome Client](https://github.com/dddevid/Musly/releases/tag/v1.0.8)**
+👉 **[Download Musly v1.0.9 - Navidrome Client](https://github.com/dddevid/Musly/releases/tag/v1.0.9)**
 
 ## Community
 

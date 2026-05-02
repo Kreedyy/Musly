@@ -49,7 +49,6 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
     );
 
     try {
-      
       _allArtists = await subsonicService.getArtists();
 
       await _loadAlbumsFromArtists(0, 20);
@@ -123,8 +122,8 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
       body: _albums.isEmpty && _isLoading
           ? GridView.builder(
               padding: const EdgeInsets.all(16).copyWith(bottom: 150),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 180,
                 mainAxisSpacing: 16,
                 crossAxisSpacing: 16,
                 childAspectRatio: 0.75,
@@ -136,8 +135,8 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
           : GridView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.all(16).copyWith(bottom: 150),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 180,
                 mainAxisSpacing: 16,
                 crossAxisSpacing: 16,
                 childAspectRatio: 0.75,

@@ -982,7 +982,7 @@ class _DynamicBackground extends StatelessWidget {
                       useOldImageOnUrlChange: true,
                       fadeInDuration: const Duration(milliseconds: 300),
                       fadeOutDuration: Duration.zero,
-                      placeholder: (_, _) => Container(color: Colors.black),
+                      placeholder: (ctx, url) => Container(color: Colors.black),
                       errorWidget: (ctx, e, _) =>
                           Container(color: Colors.black),
                     ),
@@ -1138,7 +1138,8 @@ class _PlayerHeader extends StatelessWidget {
               Selector<PlayerProvider, double>(
                 selector: (_, p) => p.playbackSpeed,
                 builder: (context, speed, _) => IconButton(
-                  tooltip: 'Playback speed (${speed == 1.0 ? '1×' : '$speed×'})',
+                  tooltip:
+                      'Playback speed (${speed == 1.0 ? '1×' : '$speed×'})',
                   onPressed: () => _showSpeedDialog(context),
                   icon: speed != 1.0
                       ? Text(
@@ -1276,8 +1277,9 @@ class _PlayerHeader extends StatelessWidget {
           return Container(
             decoration: BoxDecoration(
               color: AppTheme.darkSurface,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
             ),
             child: SingleChildScrollView(
               child: Column(
@@ -1528,14 +1530,14 @@ class _AlbumArtworkSection extends StatelessWidget {
                             useOldImageOnUrlChange: true,
                             fadeInDuration: Duration.zero,
                             fadeOutDuration: Duration.zero,
-                            placeholder: (_, _) =>
+                            placeholder: (ctx, url) =>
                                 thumbnailUrl != null && thumbnailUrl!.isNotEmpty
                                 ? CachedNetworkImage(
                                     imageUrl: thumbnailUrl!,
                                     fit: BoxFit.contain,
                                     memCacheWidth: 200,
                                     fadeInDuration: Duration.zero,
-                                    errorWidget: (_, _, _) =>
+                                    errorWidget: (ctx, err, stack) =>
                                         _buildLoadingPlaceholder(),
                                   )
                                 : _buildLoadingPlaceholder(),
@@ -1707,8 +1709,9 @@ class _SwipeableAlbumArtwork extends StatelessWidget {
                 useOldImageOnUrlChange: true,
                 fadeInDuration: Duration.zero,
                 fadeOutDuration: Duration.zero,
-                placeholder: (_, _) => _buildPlaceholder(),
-                errorWidget: (_, _, _) => _buildNoArtPlaceholder(context),
+                placeholder: (ctx, url) => _buildPlaceholder(),
+                errorWidget: (ctx, err, stack) =>
+                    _buildNoArtPlaceholder(context),
               ),
       ),
     );
@@ -2098,7 +2101,7 @@ class _SongInfoState extends State<_SongInfo> {
                                 width: 50,
                                 height: 50,
                                 fit: BoxFit.cover,
-                                placeholder: (_, _) => Container(
+                                placeholder: (ctx, url) => Container(
                                   width: 50,
                                   height: 50,
                                   color: AppTheme.darkCard,
@@ -2598,10 +2601,11 @@ class _VolumeSliderState extends State<_VolumeSlider> {
   double _systemVolume = 0.5;
   StreamSubscription<double>? _volumeSubscription;
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-  }
+  // Serialise remote volume commits: store the latest desired value and run
+  // one async write loop at a time so out-of-order responses can't snap the
+  // renderer back to a stale level during a fast drag.
+  double? _pendingRemoteVolume;
+  bool _remoteCommitInProgress = false;
 
   @override
   void initState() {
@@ -2630,149 +2634,196 @@ class _VolumeSliderState extends State<_VolumeSlider> {
     super.dispose();
   }
 
-  void _updateVolumeFromPosition(Offset localPosition, double width) {
-    final newVolume = (localPosition.dx / width).clamp(0.0, 1.0);
+  void _applyVolume(double newVolume, PlayerProvider provider, bool isRemote) {
     setState(() {
       _dragValue = newVolume;
-      _systemVolume = newVolume;
+      if (!isRemote) _systemVolume = newVolume;
     });
-    VolumeController.instance.setVolume(newVolume);
+    if (isRemote) {
+      // Queue the value and let a single async loop drain the queue so rapid
+      // drag ticks never result in out-of-order writes reaching the renderer.
+      _pendingRemoteVolume = newVolume;
+      _drainRemoteVolume(provider);
+    } else {
+      VolumeController.instance.setVolume(newVolume);
+    }
+  }
+
+  Future<void> _drainRemoteVolume(PlayerProvider provider) async {
+    if (_remoteCommitInProgress) return;
+    _remoteCommitInProgress = true;
+    try {
+      while (_pendingRemoteVolume != null) {
+        final value = _pendingRemoteVolume!;
+        _pendingRemoteVolume = null;
+        await provider.setVolume(value);
+      }
+    } finally {
+      _remoteCommitInProgress = false;
+    }
+  }
+
+  void _updateVolumeFromPosition(
+    Offset localPosition,
+    double width,
+    PlayerProvider provider,
+    bool isRemote,
+  ) {
+    final newVolume = (localPosition.dx / width).clamp(0.0, 1.0);
+    _applyVolume(newVolume, provider, isRemote);
   }
 
   @override
   Widget build(BuildContext context) {
-    final displayVolume = _isDragging ? _dragValue : _systemVolume;
+    // Consumer so the slider re-reads provider.volume on each UPnP poll tick.
+    return Consumer<PlayerProvider>(
+      builder: (context, provider, _) {
+        final isRemote = provider.isRemotePlayback;
+        final currentVolume = isRemote ? provider.volume : _systemVolume;
+        final displayVolume = _isDragging ? _dragValue : currentVolume;
 
-    return Row(
-      children: [
-        GestureDetector(
-          onTap: () {
-            setState(() => _systemVolume = 0.0);
-            VolumeController.instance.setVolume(0.0);
-          },
-          child: Icon(
-            displayVolume <= 0.01
-                ? CupertinoIcons.speaker_slash_fill
-                : CupertinoIcons.speaker_1_fill,
-            color: Colors.white.withValues(alpha: 0.7),
-            size: 20,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final trackWidth = constraints.maxWidth;
+        return Row(
+          children: [
+            GestureDetector(
+              onTap: () => _applyVolume(0.0, provider, isRemote),
+              child: Icon(
+                displayVolume <= 0.01
+                    ? CupertinoIcons.speaker_slash_fill
+                    : CupertinoIcons.speaker_1_fill,
+                color: Colors.white.withValues(alpha: 0.7),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final trackWidth = constraints.maxWidth;
 
-              return GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onHorizontalDragStart: (details) {
-                  setState(() {
-                    _isDragging = true;
-                    _dragValue = _systemVolume;
-                  });
-                  _updateVolumeFromPosition(details.localPosition, trackWidth);
-                },
-                onHorizontalDragUpdate: (details) {
-                  _updateVolumeFromPosition(details.localPosition, trackWidth);
-                },
-                onHorizontalDragEnd: (details) {
-                  setState(() => _isDragging = false);
-                },
-                onTapDown: (details) {
-                  _updateVolumeFromPosition(details.localPosition, trackWidth);
-                },
-                child: SizedBox(
-                  height: 40,
-                  child: Center(
-                    child: Stack(
-                      alignment: Alignment.centerLeft,
-                      children: [
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 120),
-                          curve: Curves.easeOut,
-                          height: _isDragging ? 6 : 4,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(
-                              _isDragging ? 3 : 2,
-                            ),
-                          ),
-                        ),
-
-                        FractionallySizedBox(
-                          widthFactor: displayVolume.clamp(0.0, 1.0),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 120),
-                            curve: Curves.easeOut,
-                            height: _isDragging ? 6 : 4,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              borderRadius: BorderRadius.circular(
-                                _isDragging ? 3 : 2,
+                  return GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onHorizontalDragStart: (details) {
+                      setState(() {
+                        _isDragging = true;
+                        _dragValue = currentVolume;
+                      });
+                      _updateVolumeFromPosition(
+                        details.localPosition,
+                        trackWidth,
+                        provider,
+                        isRemote,
+                      );
+                    },
+                    onHorizontalDragUpdate: (details) {
+                      _updateVolumeFromPosition(
+                        details.localPosition,
+                        trackWidth,
+                        provider,
+                        isRemote,
+                      );
+                    },
+                    onHorizontalDragEnd: (details) {
+                      setState(() => _isDragging = false);
+                    },
+                    onTapDown: (details) {
+                      _updateVolumeFromPosition(
+                        details.localPosition,
+                        trackWidth,
+                        provider,
+                        isRemote,
+                      );
+                    },
+                    child: SizedBox(
+                      height: 40,
+                      child: Center(
+                        child: Stack(
+                          alignment: Alignment.centerLeft,
+                          children: [
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 120),
+                              curve: Curves.easeOut,
+                              height: _isDragging ? 6 : 4,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(
+                                  _isDragging ? 3 : 2,
+                                ),
                               ),
                             ),
-                          ),
-                        ),
 
-                        Positioned(
-                          left:
-                              ((trackWidth * displayVolume.clamp(0.0, 1.0)) -
-                                      (_isDragging ? 10 : 6))
-                                  .clamp(
-                                    0.0,
-                                    trackWidth - (_isDragging ? 20 : 12),
+                            FractionallySizedBox(
+                              widthFactor: displayVolume.clamp(0.0, 1.0),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 120),
+                                curve: Curves.easeOut,
+                                height: _isDragging ? 6 : 4,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                  borderRadius: BorderRadius.circular(
+                                    _isDragging ? 3 : 2,
                                   ),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 120),
-                            curve: Curves.easeOut,
-                            width: _isDragging ? 20 : 12,
-                            height: _isDragging ? 20 : 12,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: _isDragging
-                                  ? [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.4,
-                                        ),
-                                        blurRadius: 8,
-                                        spreadRadius: 1,
-                                      ),
-                                    ]
-                                  : [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.2,
-                                        ),
-                                        blurRadius: 3,
-                                      ),
-                                    ],
+                                ),
+                              ),
                             ),
-                          ),
+
+                            Positioned(
+                              left:
+                                  ((trackWidth *
+                                              displayVolume.clamp(0.0, 1.0)) -
+                                          (_isDragging ? 10 : 6))
+                                      .clamp(
+                                        0.0,
+                                        trackWidth - (_isDragging ? 20 : 12),
+                                      ),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 120),
+                                curve: Curves.easeOut,
+                                width: _isDragging ? 20 : 12,
+                                height: _isDragging ? 20 : 12,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: _isDragging
+                                      ? [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(
+                                              alpha: 0.4,
+                                            ),
+                                            blurRadius: 8,
+                                            spreadRadius: 1,
+                                          ),
+                                        ]
+                                      : [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(
+                                              alpha: 0.2,
+                                            ),
+                                            blurRadius: 3,
+                                          ),
+                                        ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(width: 12),
-        GestureDetector(
-          onTap: () {
-            setState(() => _systemVolume = 1.0);
-            VolumeController.instance.setVolume(1.0);
-          },
-          child: Icon(
-            CupertinoIcons.speaker_3_fill,
-            color: Colors.white.withValues(alpha: 0.7),
-            size: 20,
-          ),
-        ),
-      ],
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            GestureDetector(
+              onTap: () => _applyVolume(1.0, provider, isRemote),
+              child: Icon(
+                CupertinoIcons.speaker_3_fill,
+                color: Colors.white.withValues(alpha: 0.7),
+                size: 20,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

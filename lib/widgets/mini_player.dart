@@ -41,11 +41,11 @@ class MiniPlayer extends StatelessWidget {
         if (isPlayingRadio && currentRadioStation != null) {
           title = currentRadioStation.name;
           subtitle = 'Internet Radio • LIVE';
-          coverArt =
-              null; 
+          coverArt = null;
         } else if (currentSong != null) {
           title = currentSong.title;
-          subtitle = currentSong.artistParticipants != null &&
+          subtitle =
+              currentSong.artistParticipants != null &&
                   currentSong.artistParticipants!.isNotEmpty
               ? currentSong.artistParticipants!.map((a) => a.name).join(', ')
               : currentSong.artist;
@@ -128,8 +128,8 @@ class MiniPlayer extends StatelessWidget {
                 children: [
                   if (!isPlayingRadio)
                     Selector<PlayerProvider, double>(
-                      selector: (_, p) => p.progress,
-                      builder: (_, progress, _) => LinearProgressIndicator(
+                      selector: (ctx, p) => p.progress,
+                      builder: (ctx, progress, __) => LinearProgressIndicator(
                         value: progress,
                         backgroundColor: Colors.transparent,
                         valueColor: AlwaysStoppedAnimation<Color>(
@@ -272,7 +272,7 @@ class _MiniPlayerControls extends StatelessWidget {
               ),
               color: color,
             ),
-            
+
             if (!isRadio)
               IconButton(
                 onPressed: hasNext ? provider.skipNext : null,

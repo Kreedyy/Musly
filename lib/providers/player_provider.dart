@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' show Random;
 
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
@@ -50,11 +51,17 @@ class PlayerProvider extends ChangeNotifier {
   bool _isPlaying = false;
   bool _isLoading = false;
   bool _shuffleEnabled = false;
+  final List<String> _shuffleHistory = [];
   RepeatMode _repeatMode = RepeatMode.off;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
   Song? _currentSong;
   double _volume = 1.0;
+
+  /// True only while audio is actually being rendered on a remote device.
+  /// Distinct from isConnected: if the user plays a radio station while a
+  /// UPnP renderer is connected, the audio is still local, so this stays false.
+  bool _isRenderingRemotely = false;
 
   String? _resolvedArtworkUrl;
 
@@ -84,6 +91,7 @@ class PlayerProvider extends ChangeNotifier {
     _discordRpcService = DiscordRpcService(storageService);
     _castService.addListener(_onCastStateChanged);
     _upnpService.addListener(_onUpnpStateChanged);
+    _upnpService.onRendererLost = _onUpnpRendererLost;
     _initializePlayer();
     _initializeAndroidAuto();
     _initializeSystemServices();
@@ -149,19 +157,28 @@ class PlayerProvider extends ChangeNotifier {
     _windowsService.onSkipPrevious = skipPrevious;
     _windowsService.onSeekTo = seek;
 
+    // Audio focus and noisy callbacks must be no-ops in remote-playback mode.
+    // The audio is playing on the renderer device, not on this phone, so
+    // Android reassigning audio focus at screen-off (or a noisy event) must
+    // not pause the renderer.
     _androidSystemService.onAudioFocusLoss = () {
+      if (isRemotePlayback) return;
       pause();
     };
     _androidSystemService.onAudioFocusLossTransient = () {
+      if (isRemotePlayback) return;
       pause();
     };
     _androidSystemService.onAudioFocusLossTransientCanDuck = () {
+      if (isRemotePlayback) return;
       _audioPlayer.setVolume(0.3);
     };
     _androidSystemService.onAudioFocusGain = () {
+      if (isRemotePlayback) return;
       _audioPlayer.setVolume(_volume);
     };
     _androidSystemService.onBecomingNoisy = () {
+      if (isRemotePlayback) return;
       pause();
     };
 
@@ -174,10 +191,21 @@ class PlayerProvider extends ChangeNotifier {
     _bluetoothService.onSeekTo = seek;
     _bluetoothService.onDeviceConnected = (device) {
       debugPrint('Bluetooth device connected: ${device.name}');
+      // AVRCP support means the device can handle audio controls, which is
+      // a reliable proxy for A2DP audio output (watches/controllers don't
+      // advertise AVRCP). Re-query isA2dpConnected for ground truth.
+      _bluetoothService.isA2dpConnected().then((active) {
+        _isA2dpAudioActive = active;
+        debugPrint('Bluetooth A2DP audio active: $_isA2dpAudioActive');
+      });
       _updateAllServices();
     };
     _bluetoothService.onDeviceDisconnected = (device) {
       debugPrint('Bluetooth device disconnected: ${device.name}');
+      _bluetoothService.isA2dpConnected().then((active) {
+        _isA2dpAudioActive = active;
+        debugPrint('Bluetooth A2DP audio active: $_isA2dpAudioActive');
+      });
     };
     
     _bluetoothService.registerAbsoluteVolumeControl();
@@ -671,19 +699,44 @@ class PlayerProvider extends ChangeNotifier {
   int get currentIndex => _currentIndex;
   bool get isPlaying => _isPlaying;
   bool get isLoading => _isLoading;
+  /// True when audio is playing on a remote renderer (UPnP or Cast) rather
+  /// than locally.  Used to suppress audio-focus and noisy-event handling that
+  /// would incorrectly pause the remote device, and to route UI volume changes
+  /// to the renderer instead of the Android system volume.
+  bool get isRemotePlayback => _isRenderingRemotely;
   bool get shuffleEnabled => _shuffleEnabled;
   RepeatMode get repeatMode => _repeatMode;
   Duration get position => _position;
   Duration get duration => _duration;
   Song? get currentSong => _currentSong;
-  bool get hasNext => _currentIndex < _queue.length - 1;
-  bool get hasPrevious => _currentIndex > 0;
+  bool get hasNext =>
+      _queue.isNotEmpty &&
+      (_currentIndex < _queue.length - 1 ||
+          _repeatMode == RepeatMode.all ||
+          (_shuffleEnabled && _queue.length > 1));
+  bool get hasPrevious =>
+      _queue.isNotEmpty &&
+      (_currentIndex > 0 ||
+          _repeatMode == RepeatMode.all ||
+          (_shuffleEnabled && _shuffleHistory.isNotEmpty));
   double get volume => _volume;
 
   RadioStation? get currentRadioStation => _currentRadioStation;
   bool get isPlayingRadio => _isPlayingRadio;
 
-  Stream<Duration> get positionStream => _audioPlayer.positionStream;
+  // Unified position stream: fed by the local audio player in normal mode, or
+  // by UPnP/Cast polling in remote-playback mode.  The UI subscribes to this
+  // instead of directly to _audioPlayer.positionStream so that the progress
+  // bar animates correctly regardless of which playback path is active.
+  final _positionController = StreamController<Duration>.broadcast();
+  Stream<Duration> get positionStream => _positionController.stream;
+
+  // Subscriptions stored so they can be cancelled before dispose closes the
+  // StreamController, preventing a late just_audio tick from calling add() on
+  // a closed controller.
+  StreamSubscription<PlayerState>? _playerStateSub;
+  StreamSubscription<Duration>? _positionSub;
+  StreamSubscription<Duration?>? _durationSub;
 
   double get progress {
     if (_duration.inMilliseconds == 0) return 0;
@@ -770,15 +823,28 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   void _initializePlayer() {
-    
     _storageService.getVolume().then((savedVolume) {
       _volume = savedVolume;
       _audioPlayer.setVolume(_volume);
       notifyListeners();
     });
 
-    _audioPlayer.playerStateStream.listen(
+    _storageService.getShuffleMode().then((saved) {
+      _shuffleEnabled = saved;
+      notifyListeners();
+    });
+
+    _storageService.getRepeatMode().then((saved) {
+      _repeatMode = RepeatMode.values[saved.clamp(0, RepeatMode.values.length - 1)];
+      notifyListeners();
+    });
+
+    _playerStateSub = _audioPlayer.playerStateStream.listen(
       (state) {
+        // In remote-playback mode the local player is stopped/paused; ignore
+        // its state so it doesn't overwrite the UPnP/Cast-managed values.
+        if (_isRenderingRemotely) return;
+
         final wasPlaying = _isPlaying;
         _isPlaying = state.playing;
 
@@ -788,7 +854,7 @@ class PlayerProvider extends ChangeNotifier {
 
         if (state.processingState == ProcessingState.completed) {
           debugPrint('[Player] ✓ Song completed: "${_currentSong?.title ?? 'unknown'}"');
-          _onSongComplete();
+          _onSongComplete().catchError((e) => debugPrint('[Player] _onSongComplete error: $e'));
         }
 
         if (state.processingState == ProcessingState.buffering && !wasPlaying) {
@@ -808,14 +874,18 @@ class PlayerProvider extends ChangeNotifier {
 
     Duration? lastNotified;
     Duration? lastSystemUpdate;
-    _audioPlayer.positionStream.listen(
+    _positionSub = _audioPlayer.positionStream.listen(
       (position) {
-        
+        // In remote-playback mode the local player sits idle at position zero;
+        // ignore its ticks so they don't overwrite the UPnP/Cast position.
+        if (_isRenderingRemotely) return;
+
         final positionJumpedBack =
             _position.inMilliseconds > 0 &&
             position.inMilliseconds < _position.inMilliseconds - 1000;
 
         _position = position;
+        _positionController.add(position);
 
         if (positionJumpedBack ||
             lastNotified == null ||
@@ -836,11 +906,15 @@ class PlayerProvider extends ChangeNotifier {
       },
     );
 
-    _audioPlayer.durationStream.listen(
+    _durationSub = _audioPlayer.durationStream.listen(
       (duration) {
+        // In remote-playback mode the local player has no loaded track; ignore
+        // its duration so it doesn't zero out the UPnP/Cast duration.
+        if (_isRenderingRemotely) return;
+
         _duration = duration ?? Duration.zero;
         notifyListeners();
-        _updateAndroidAuto(); 
+        _updateAndroidAuto();
       },
       onError: (error) {
         debugPrint('Duration stream error (can be ignored): $error');
@@ -848,8 +922,7 @@ class PlayerProvider extends ChangeNotifier {
     );
   }
 
-  void _onSongComplete() {
-    
+  Future<void> _onSongComplete() async {
     if (_currentSong != null && _currentSong!.isLocal != true) {
       _subsonicService.scrobble(_currentSong!.id, submission: true).catchError((
         e,
@@ -871,26 +944,19 @@ class PlayerProvider extends ChangeNotifier {
       return;
     }
 
-    switch (_repeatMode) {
-      case RepeatMode.one:
-        seek(Duration.zero);
-        play();
-        break;
-      case RepeatMode.all:
-        if (_currentIndex >= _queue.length - 1) {
-          skipToIndex(0);
-        } else {
-          skipNext();
-        }
-        break;
-      case RepeatMode.off:
-        if (_currentIndex < _queue.length - 1) {
-          skipNext();
-        } else {
-          
-          _handleEndOfQueue();
-        }
-        break;
+    // Repeat-one, or repeat-all with a single-song queue: seek and replay
+    // (skipNext would call playSong with the same song, triggering the
+    // "same song = togglePlayPause" guard and pausing instead of replaying)
+    if (_repeatMode == RepeatMode.one ||
+        (_repeatMode == RepeatMode.all && _queue.length == 1)) {
+      await seek(Duration.zero);
+      await play();
+    } else if (_currentIndex < _queue.length - 1 ||
+        _repeatMode == RepeatMode.all ||
+        _shuffleEnabled) {
+      await skipNext();
+    } else {
+      await _handleEndOfQueue();
     }
   }
 
@@ -923,13 +989,16 @@ class PlayerProvider extends ChangeNotifier {
 
     try {
       if (playlist != null) {
+        final isNewQueue = !identical(playlist, _queue);
         _queue = List.from(playlist);
         _currentIndex =
             startIndex ?? playlist.indexWhere((s) => s.id == song.id);
         if (_currentIndex == -1) _currentIndex = 0;
+        if (isNewQueue) _shuffleHistory.clear();
       } else if (_queue.isEmpty || !_queue.any((s) => s.id == song.id)) {
         _queue = [song];
         _currentIndex = 0;
+        _shuffleHistory.clear();
       } else {
         _currentIndex = _queue.indexWhere((s) => s.id == song.id);
       }
@@ -963,9 +1032,12 @@ class PlayerProvider extends ChangeNotifier {
               : null,
           autoPlay: true,
         );
+        _isRenderingRemotely = true;
         _isPlaying = true;
       } else if (_upnpService.isConnected) {
-        
+        // Reset before sending Stop so a poll that fires mid-load can't
+        // mistake the STOPPED state for a natural track end and advance twice.
+        _upnpWasPlaying = false;
         debugPrint(
           'UPnP: playSong() taking UPnP branch, isConnected=${_upnpService.isConnected}',
         );
@@ -976,6 +1048,10 @@ class PlayerProvider extends ChangeNotifier {
             : _subsonicService.getStreamUrl(song.id);
 
         try {
+          // Resolve the MIME type so strict UPnP renderers (e.g. moode /
+          // upmpdcli with "check metadata" on) can validate protocolInfo.
+          final mimeType = song.contentType ??
+              UpnpService.mimeTypeFromSuffix(song.suffix);
           final success = await _upnpService.loadAndPlay(
             url: playUrl,
             title: song.title,
@@ -985,6 +1061,7 @@ class PlayerProvider extends ChangeNotifier {
                 ? _subsonicService.getCoverArtUrl(song.coverArt, size: 0)
                 : null,
             durationSecs: song.duration,
+            contentType: mimeType,
           );
           if (!success) {
             _upnpService.disconnect();
@@ -997,9 +1074,10 @@ class PlayerProvider extends ChangeNotifier {
           debugPrint('UPnP playback failed, disconnected: $e');
           rethrow;
         }
+        _isRenderingRemotely = true;
         _isPlaying = true;
       } else {
-        
+        _isRenderingRemotely = false;
         final String playUrl;
         if (song.isLocal == true && song.path != null) {
           playUrl = Uri.file(song.path!).toString();
@@ -1077,6 +1155,7 @@ class PlayerProvider extends ChangeNotifier {
       _queue = [];
       _currentIndex = -1;
       _isPlayingRadio = true;
+      _isRenderingRemotely = false; // radio always plays locally
       _currentRadioStation = station;
       _position = Duration.zero;
       _duration = Duration.zero;
@@ -1180,11 +1259,12 @@ class PlayerProvider extends ChangeNotifier {
     if (_castService.isConnected) {
       await _castService.stop();
     } else if (_upnpService.isConnected) {
+      _upnpWasPlaying = false; // prevent poll from misreading the STOPPED state
       await _upnpService.stop();
     } else {
       await _audioPlayer.stop();
     }
-    
+
     _isPlaying = false;
     _position = Duration.zero;
     notifyListeners();
@@ -1237,8 +1317,23 @@ class PlayerProvider extends ChangeNotifier {
       await _addAutoDjSongs();
     }
 
-    if (_currentIndex < _queue.length - 1) {
+    if (_shuffleEnabled && _queue.length > 1) {
+      _shuffleHistory.add(_currentSong!.id);
+      if (_shuffleHistory.length > 50) _shuffleHistory.removeAt(0);
+      int next;
+      do {
+        next = Random().nextInt(_queue.length);
+      } while (next == _currentIndex);
+      await skipToIndex(next);
+    } else if (_currentIndex < _queue.length - 1) {
       await skipToIndex(_currentIndex + 1);
+    } else if (_repeatMode == RepeatMode.all) {
+      if (_queue.length == 1) {
+        await seek(Duration.zero);
+        await play();
+      } else {
+        await skipToIndex(0);
+      }
     }
   }
 
@@ -1265,8 +1360,19 @@ class PlayerProvider extends ChangeNotifier {
   Future<void> skipPrevious() async {
     if (_position.inSeconds > 3) {
       await seek(Duration.zero);
+    } else if (_shuffleEnabled && _shuffleHistory.isNotEmpty) {
+      final prevId = _shuffleHistory.removeLast();
+      final prev = _queue.indexWhere((s) => s.id == prevId);
+      if (prev != -1) await skipToIndex(prev);
     } else if (_currentIndex > 0) {
       await skipToIndex(_currentIndex - 1);
+    } else if (_repeatMode == RepeatMode.all && _queue.isNotEmpty) {
+      if (_queue.length == 1) {
+        await seek(Duration.zero);
+        await play();
+      } else {
+        await skipToIndex(_queue.length - 1);
+      }
     } else {
       await seek(Duration.zero);
     }
@@ -1280,6 +1386,7 @@ class PlayerProvider extends ChangeNotifier {
 
   void toggleShuffle() {
     _shuffleEnabled = !_shuffleEnabled;
+    _shuffleHistory.clear();
     if (_shuffleEnabled && _queue.length > 1 && _currentSong != null) {
       final currentSong = _currentSong!;
       _queue.shuffle();
@@ -1287,6 +1394,7 @@ class PlayerProvider extends ChangeNotifier {
       _queue.insert(0, currentSong);
       _currentIndex = 0;
     }
+    _storageService.saveShuffleMode(_shuffleEnabled);
     notifyListeners();
   }
 
@@ -1302,6 +1410,7 @@ class PlayerProvider extends ChangeNotifier {
         _repeatMode = RepeatMode.off;
         break;
     }
+    _storageService.saveRepeatMode(_repeatMode.index);
     notifyListeners();
   }
 
@@ -1389,11 +1498,33 @@ class PlayerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool _upnpVolumeWriteInProgress = false;
+
   void _onRemoteVolumeChange(int volume) {
     if (_castService.isConnected) {
       _castService.setVolume(volume / 100.0);
     } else if (_upnpService.isConnected) {
-      _upnpService.setVolume(volume);
+      if (_upnpVolumeWriteInProgress) return;
+      _applyUpnpVolume(volume);
+    }
+  }
+
+  Future<void> _applyUpnpVolume(int volume) async {
+    _upnpVolumeWriteInProgress = true;
+    _volume = (volume / 100.0).clamp(0.0, 1.0);
+    notifyListeners();
+    try {
+      await _upnpService.setVolume(volume);
+      final actual = await _upnpService.getVolume();
+      if (actual >= 0) {
+        _volume = actual / 100.0;
+        _androidSystemService.updateRemoteVolume(actual);
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('UPnP setVolume error: $e');
+    } finally {
+      _upnpVolumeWriteInProgress = false;
     }
   }
 
@@ -1498,6 +1629,9 @@ class PlayerProvider extends ChangeNotifier {
     _sleepTimerFadeTimer?.cancel();
     _castService.removeListener(_onCastStateChanged);
     _upnpService.removeListener(_onUpnpStateChanged);
+    if (_upnpService.onRendererLost == _onUpnpRendererLost) {
+      _upnpService.onRendererLost = null;
+    }
     _audioHandler.customAction('dispose');
     _androidAutoService.dispose();
     _androidSystemService.dispose();
@@ -1506,6 +1640,10 @@ class PlayerProvider extends ChangeNotifier {
     _samsungService.dispose();
     
     _discordRpcService.shutdown();
+    _playerStateSub?.cancel();
+    _positionSub?.cancel();
+    _durationSub?.cancel();
+    _positionController.close();
     super.dispose();
   }
 
@@ -1584,7 +1722,7 @@ class PlayerProvider extends ChangeNotifier {
         playSong(song);
       }
     } else {
-      
+      _isRenderingRemotely = false;
       _androidSystemService.setRemotePlayback(isRemote: false);
       _isPlaying = false;
       notifyListeners();
@@ -1594,6 +1732,9 @@ class PlayerProvider extends ChangeNotifier {
 
   bool _upnpWasConnected = false;
   bool _upnpWasPlaying = false;
+  // True when an A2DP audio-output device (car, speaker) is connected.
+  // Control-only devices (Garmin watch, etc.) don't set this flag.
+  bool _isA2dpAudioActive = false;
 
   void _onUpnpStateChanged() {
     final connected = _upnpService.isConnected;
@@ -1621,9 +1762,9 @@ class PlayerProvider extends ChangeNotifier {
     if (!connected && _upnpWasConnected) {
       _upnpWasConnected = false;
       _upnpWasPlaying = false;
+      _isRenderingRemotely = false;
       _isPlaying = false;
-      _position = Duration.zero;
-      _duration = Duration.zero;
+      // Preserve _position and _duration so the UI shows where we were.
       _androidSystemService.setRemotePlayback(isRemote: false);
       notifyListeners();
       _updateAndroidAuto();
@@ -1637,13 +1778,15 @@ class PlayerProvider extends ChangeNotifier {
     final playing = _upnpService.isRendererPlaying;
     final rendererState = _upnpService.rendererState;
 
-    if (_upnpWasPlaying &&
-        rendererState == 'STOPPED' &&
-        dur > Duration.zero &&
-        pos.inSeconds >= dur.inSeconds - 1) {
+    if (_upnpWasPlaying && rendererState == 'STOPPED') {
+      // _upnpWasPlaying is reset to false in playSong() and stop() before
+      // any Stop command is sent, so this only fires for a *natural* track
+      // end.  We don't check duration > 0 here because many renderers
+      // (including moode/upmpdcli) return 0:00:00 from GetPositionInfo once
+      // the transport is stopped, which would cause the check to silently fail.
       debugPrint('UPnP: Track ended (pos=${pos.inSeconds}s, dur=${dur.inSeconds}s) — advancing');
       _upnpWasPlaying = false;
-      _onSongComplete();
+      _onSongComplete().catchError((e) => debugPrint('[Player] _onSongComplete error: $e'));
       return;
     }
 
@@ -1665,16 +1808,54 @@ class PlayerProvider extends ChangeNotifier {
     }
 
     final vol = _upnpService.volume;
-    if (vol >= 0) {
+    if (vol >= 0 && !_upnpVolumeWriteInProgress) {
       final normalized = vol / 100.0;
       if ((_volume - normalized).abs() > 0.005) {
         _volume = normalized;
         changed = true;
+        _androidSystemService.updateRemoteVolume(vol);
       }
-      _androidSystemService.updateRemoteVolume(vol);
     }
 
     if (changed) {
+      _positionController.add(_position);
+      notifyListeners();
+      _updateAndroidAuto();
+    }
+  }
+
+  /// Called by [UpnpService] after 30 consecutive poll failures (~30 s).
+  /// [_onUpnpStateChanged] has already switched us off remote playback and
+  /// preserved [_position]. Load the song into the local player at the last
+  /// known position, paused, so the user can resume wherever they want.
+  /// Android routes audio to a connected A2DP device automatically.
+  Future<void> _onUpnpRendererLost() async {
+    final lastPosition = _position;
+    final lastSong = _currentSong;
+
+    debugPrint(
+      'UPnP: renderer lost — A2DP audio active: $_isA2dpAudioActive, '
+      'last position: ${lastPosition.inSeconds}s, song: "${lastSong?.title}"',
+    );
+
+    if (lastSong == null) return;
+
+    final playUrl = lastSong.isLocal == true && lastSong.path != null
+        ? Uri.file(lastSong.path!).toString()
+        : _offlineService.getPlayableUrl(lastSong, _subsonicService);
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await _audioPlayer.setUrl(playUrl);
+      _position = lastPosition;
+      await _audioPlayer.seek(lastPosition);
+      // Leave paused — let the user consciously resume on their new output.
+    } catch (e) {
+      debugPrint('UPnP fallback: failed to reload local player: $e');
+    } finally {
+      _isLoading = false;
       notifyListeners();
       _updateAndroidAuto();
     }
