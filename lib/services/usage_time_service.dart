@@ -3,16 +3,16 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/support_dialog.dart';
 
-/// Service to track app usage time and show support dialog after 25 minutes
+/// Service to track app usage time and show support dialog after 8 minutes
 class UsageTimeService extends ChangeNotifier with WidgetsBindingObserver {
   static final UsageTimeService _instance = UsageTimeService._internal();
   factory UsageTimeService() => _instance;
   UsageTimeService._internal();
 
   static const String _prefsKeyUsageTime = 'app_usage_time_seconds';
-  static const String _prefsKeyDialogShown = 'support_dialog_shown_after_25min';
+  static const String _prefsKeyDialogShown = 'support_dialog_shown_after_8min';
   static const String _prefsKeyDialogDontShow = 'support_dialog_dont_show';
-  static const int _targetSeconds = 25 * 60; // 25 minutes in seconds
+  static const int _targetSeconds = 8 * 60; // 8 minutes in seconds
 
   DateTime? _sessionStartTime;
   int _accumulatedSeconds = 0;
