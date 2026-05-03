@@ -36,6 +36,9 @@ class AppLocalizationsSq extends AppLocalizations {
   String get yourPlaylists => 'Listat e tua për dëgjim';
 
   @override
+  String get favoritePlaylists => 'Favorite Playlists';
+
+  @override
   String get madeForYou => 'Krijuar për ty';
 
   @override

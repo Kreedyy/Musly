@@ -36,6 +36,9 @@ class AppLocalizationsSv extends AppLocalizations {
   String get yourPlaylists => 'Dina Spellistor';
 
   @override
+  String get favoritePlaylists => 'Favorite Playlists';
+
+  @override
   String get madeForYou => 'Skapat För Dig';
 
   @override

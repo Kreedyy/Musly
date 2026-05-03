@@ -36,6 +36,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get yourPlaylists => 'Deine Playlisten';
 
   @override
+  String get favoritePlaylists => 'Favorite Playlists';
+
+  @override
   String get madeForYou => 'Für dich gemacht';
 
   @override

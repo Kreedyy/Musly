@@ -36,6 +36,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get yourPlaylists => 'Ваши плейлисты';
 
   @override
+  String get favoritePlaylists => 'Favorite Playlists';
+
+  @override
   String get madeForYou => 'Сделано для вас';
 
   @override

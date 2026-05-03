@@ -36,6 +36,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get yourPlaylists => '你的歌单';
 
   @override
+  String get favoritePlaylists => 'Favorite Playlists';
+
+  @override
   String get madeForYou => '为你制作';
 
   @override

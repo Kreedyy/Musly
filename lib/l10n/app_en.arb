@@ -47,6 +47,11 @@
     "description": "Your playlists section title"
   },
 
+  "favoritePlaylists": "Favorite Playlists",
+  "@favoritePlaylists": {
+    "description": "Favorite playlists section title on home screen"
+  },
+
   "madeForYou": "Made For You",
   "@madeForYou": {
     "description": "Made for you section title"

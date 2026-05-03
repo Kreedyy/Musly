@@ -200,6 +200,12 @@ abstract class AppLocalizations {
   /// **'Your Playlists'**
   String get yourPlaylists;
 
+  /// Favorite playlists section title on home screen
+  ///
+  /// In en, this message translates to:
+  /// **'Favorite Playlists'**
+  String get favoritePlaylists;
+
   /// Made for you section title
   ///
   /// In en, this message translates to:

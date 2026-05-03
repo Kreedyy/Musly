@@ -5,6 +5,7 @@ import '../models/models.dart';
 import '../providers/providers.dart';
 import '../services/subsonic_service.dart';
 import '../services/offline_service.dart';
+import '../services/favorite_playlists_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/widgets.dart';
 
@@ -255,6 +256,23 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
     }
   }
 
+  Future<void> _toggleFavorite() async {
+    if (_playlist == null) return;
+    await FavoritePlaylistsService().toggleFavorite(widget.playlistId);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            FavoritePlaylistsService().isFavorite(widget.playlistId)
+                ? 'Added to favorites'
+                : 'Removed from favorites',
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   Future<void> _downloadPlaylist() async {
     final songs = _playlist?.songs;
     if (songs == null || songs.isEmpty) return;
@@ -361,6 +379,21 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
               onPressed: _toggleReorderMode,
             ),
           ] else ...[
+            // Favorite toggle button
+            AnimatedBuilder(
+              animation: FavoritePlaylistsService(),
+              builder: (context, child) {
+                final isFavorite = FavoritePlaylistsService().isFavorite(widget.playlistId);
+                return IconButton(
+                  tooltip: isFavorite ? 'Remove from favorites' : 'Add to favorites',
+                  icon: Icon(
+                    isFavorite ? CupertinoIcons.heart_fill : CupertinoIcons.heart,
+                    color: isFavorite ? Colors.red : null,
+                  ),
+                  onPressed: _toggleFavorite,
+                );
+              },
+            ),
             IconButton(
               tooltip: 'Reorder songs',
               icon: const Icon(CupertinoIcons.arrow_up_arrow_down),

@@ -14,6 +14,7 @@ import 'services/audio_handler.dart';
 import 'services/transcoding_service.dart';
 import 'services/local_music_service.dart';
 import 'services/analytics_service.dart';
+import 'services/favorite_playlists_service.dart';
 import 'widgets/privacy_policy_dialog.dart';
 import 'providers/providers.dart';
 import 'screens/screens.dart';
@@ -102,6 +103,11 @@ void main() async {
   });
   jukeboxService.initialize().catchError((e) {
     debugPrint('Failed to initialize jukebox service: $e');
+  });
+
+  // Initialize favorite playlists service
+  FavoritePlaylistsService().initialize().catchError((e) {
+    debugPrint('Failed to initialize favorite playlists service: $e');
   });
 
   // Initialize analytics service (privacy-first, anonymous)

@@ -11,6 +11,7 @@ import '../services/recommendation_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/navigation_helper.dart';
 import '../widgets/widgets.dart';
+import '../widgets/favorite_playlists_section.dart';
 import 'album_screen.dart';
 import 'playlist_screen.dart';
 import 'history_screen.dart';
@@ -132,6 +133,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ],
 
+                      const SizedBox(height: 24),
+
+                      // Favorite Playlists Section
+                      const FavoritePlaylistsSection(),
                       const SizedBox(height: 24),
 
                       if (recommendationService.enabled &&
