@@ -1,6 +1,8 @@
 import Flutter
 import UIKit
+#if canImport(ActivityKit)
 import ActivityKit
+#endif
 
 /// Plugin to manage synchronized lyrics on iOS Lock Screen via Live Activities
 public class iOSLyricsPlugin: NSObject, FlutterPlugin {
@@ -12,8 +14,10 @@ public class iOSLyricsPlugin: NSObject, FlutterPlugin {
     private var eventChannel: FlutterEventChannel?
     private var eventSink: FlutterEventSink?
     
-    /// Current Live Activity
+    /// Current Live Activity (only available on iOS 16.1+)
+    #if canImport(ActivityKit)
     private var currentActivity: Activity<LyricsWidgetAttributes>?
+    #endif
     
     /// Last known song info for Live Activity
     private var currentSongTitle: String = ""
@@ -44,6 +48,7 @@ public class iOSLyricsPlugin: NSObject, FlutterPlugin {
     
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         // Check if Live Activities are available (iOS 16.1+)
+        #if canImport(ActivityKit)
         guard #available(iOS 16.1, *) else {
             result(FlutterError(
                 code: "UNAVAILABLE",
@@ -52,6 +57,14 @@ public class iOSLyricsPlugin: NSObject, FlutterPlugin {
             ))
             return
         }
+        #else
+        result(FlutterError(
+            code: "UNAVAILABLE",
+            message: "Live Activities not supported on this iOS version",
+            details: nil
+        ))
+        return
+        #endif
         
         switch call.method {
         case "initialize":
@@ -89,6 +102,7 @@ public class iOSLyricsPlugin: NSObject, FlutterPlugin {
         }
     }
     
+    #if canImport(ActivityKit)
     @available(iOS 16.1, *)
     private func initialize(result: @escaping FlutterResult) {
         // Check if Live Activities are supported
@@ -199,6 +213,7 @@ public class iOSLyricsPlugin: NSObject, FlutterPlugin {
             result?(["ended": true])
         }
     }
+    #endif
 }
 
 // MARK: - FlutterStreamHandler
@@ -214,6 +229,7 @@ extension iOSLyricsPlugin: FlutterStreamHandler {
     }
 }
 
+#if canImport(ActivityKit)
 // MARK: - Live Activity Attributes
 @available(iOS 16.1, *)
 struct LyricsWidgetAttributes: ActivityAttributes {
@@ -229,3 +245,4 @@ struct LyricsWidgetAttributes: ActivityAttributes {
     var artist: String
     var artworkUrl: String?
 }
+#endif
