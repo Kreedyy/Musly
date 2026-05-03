@@ -12,6 +12,7 @@ class LibraryProvider extends ChangeNotifier {
 
   bool _localOnlyMode = false;
   bool _serverOfflineMode = false;
+  bool _mergeLocalLibrary = false;
   LocalMusicService? _localMusicService;
 
   List<Artist> _artists = [];
@@ -68,20 +69,23 @@ class LibraryProvider extends ChangeNotifier {
     }
   }
 
-  void setLocalMusicService(LocalMusicService service) {
-    
+  void setLocalMusicService(LocalMusicService service, {bool mergeWithServer = false}) {
     _localMusicService?.removeListener(_onLocalMusicServiceChanged);
     _localMusicService = service;
-    _localOnlyMode = true;
-    _isInitialized = false; 
+    _localOnlyMode = !mergeWithServer;
+    _mergeLocalLibrary = mergeWithServer;
+    _isInitialized = false;
     service.addListener(_onLocalMusicServiceChanged);
+    if (mergeWithServer) {
+      _onLocalMusicServiceChanged();
+    }
   }
 
   void _onLocalMusicServiceChanged() {
-    if (_localOnlyMode &&
-        _localMusicService != null &&
-        !_localMusicService!.isScanning) {
-      
+    if (_localMusicService == null || _localMusicService!.isScanning) return;
+
+    if (_localOnlyMode) {
+      // Local only mode - use only local library
       _cachedAllSongs = List.from(_localMusicService!.songs);
       _cachedAllAlbums = List.from(_localMusicService!.albums);
       _artists = List.from(_localMusicService!.artists);
@@ -90,7 +94,18 @@ class LibraryProvider extends ChangeNotifier {
       _isInitialized = true;
       _isLoading = false;
       notifyListeners();
+    } else if (_mergeLocalLibrary) {
+      // Merge mode - just notify that local library changed
+      // The getters will handle the merging
+      notifyListeners();
     }
+  }
+
+  /// Toggle merging local library with server library
+  void setMergeLocalLibrary(bool enabled) {
+    if (_mergeLocalLibrary == enabled) return;
+    _mergeLocalLibrary = enabled;
+    notifyListeners();
   }
 
   void setLocalOnlyMode(bool enabled) {
@@ -113,6 +128,7 @@ class LibraryProvider extends ChangeNotifier {
 
   bool get isLocalOnlyMode => _localOnlyMode;
   bool get isServerOfflineMode => _serverOfflineMode;
+  bool get mergeLocalLibrary => _mergeLocalLibrary;
 
   void setServerOfflineMode(bool offline) {
     _serverOfflineMode = offline;
@@ -122,7 +138,6 @@ class LibraryProvider extends ChangeNotifier {
     return _subsonicService.getCoverArtUrl(coverArt, size: 300);
   }
 
-  List<Artist> get artists => _artists;
   List<Album> get recentAlbums => _recentAlbums;
   List<Album> get frequentAlbums => _frequentAlbums;
   List<Album> get newestAlbums => _newestAlbums;
@@ -136,8 +151,53 @@ class LibraryProvider extends ChangeNotifier {
   bool get isInitialized => _isInitialized;
   String? get error => _error;
 
-  List<Album> get cachedAllAlbums => _cachedAllAlbums;
-  List<Song> get cachedAllSongs => _cachedAllSongs;
+  List<Album> get cachedAllAlbums {
+    if (!_mergeLocalLibrary || _localMusicService == null || _localMusicService!.isEmpty) {
+      return _cachedAllAlbums;
+    }
+    // Merge server albums with local albums
+    final localAlbums = _localMusicService!.albums;
+    final merged = [..._cachedAllAlbums];
+    for (final localAlbum in localAlbums) {
+      // Avoid duplicates by checking ID
+      if (!merged.any((a) => a.id == localAlbum.id)) {
+        merged.add(localAlbum);
+      }
+    }
+    return merged;
+  }
+
+  List<Song> get cachedAllSongs {
+    if (!_mergeLocalLibrary || _localMusicService == null || _localMusicService!.isEmpty) {
+      return _cachedAllSongs;
+    }
+    // Merge server songs with local songs
+    final localSongs = _localMusicService!.songs;
+    final merged = [..._cachedAllSongs];
+    for (final localSong in localSongs) {
+      // Avoid duplicates by checking ID
+      if (!merged.any((s) => s.id == localSong.id)) {
+        merged.add(localSong);
+      }
+    }
+    return merged;
+  }
+
+  List<Artist> get artists {
+    if (!_mergeLocalLibrary || _localMusicService == null || _localMusicService!.isEmpty) {
+      return _artists;
+    }
+    // Merge server artists with local artists
+    final localArtists = _localMusicService!.artists;
+    final merged = [..._artists];
+    for (final localArtist in localArtists) {
+      // Avoid duplicates by checking ID
+      if (!merged.any((a) => a.id == localArtist.id)) {
+        merged.add(localArtist);
+      }
+    }
+    return merged;
+  }
 
   Future<void> initialize() async {
     if (_isInitialized) return;

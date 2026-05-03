@@ -932,6 +932,42 @@ abstract class AppLocalizations {
   /// **'No liked albums yet'**
   String get noLikedAlbums;
 
+  /// No description provided for @localMusicLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'Local Music Library'**
+  String get localMusicLibrary;
+
+  /// No description provided for @mergeLocalLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge with Server Library'**
+  String get mergeLocalLibrary;
+
+  /// No description provided for @mergeLocalLibrarySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show local music alongside your server library'**
+  String get mergeLocalLibrarySubtitle;
+
+  /// No description provided for @localMusicStats.
+  ///
+  /// In en, this message translates to:
+  /// **'Local Music Files'**
+  String get localMusicStats;
+
+  /// No description provided for @addMusicFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Music Folder'**
+  String get addMusicFolder;
+
+  /// No description provided for @rescanLocalMusic.
+  ///
+  /// In en, this message translates to:
+  /// **'Rescan Local Music'**
+  String get rescanLocalMusic;
+
   /// No description provided for @radioStations.
   ///
   /// In en, this message translates to:

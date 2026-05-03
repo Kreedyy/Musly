@@ -430,6 +430,25 @@ class AppLocalizationsGa extends AppLocalizations {
   String get noLikedAlbums => 'No liked albums yet';
 
   @override
+  String get localMusicLibrary => 'Local Music Library';
+
+  @override
+  String get mergeLocalLibrary => 'Merge with Server Library';
+
+  @override
+  String get mergeLocalLibrarySubtitle =>
+      'Show local music alongside your server library';
+
+  @override
+  String get localMusicStats => 'Local Music Files';
+
+  @override
+  String get addMusicFolder => 'Add Music Folder';
+
+  @override
+  String get rescanLocalMusic => 'Rescan Local Music';
+
+  @override
   String get radioStations => 'Radio Stations';
 
   @override

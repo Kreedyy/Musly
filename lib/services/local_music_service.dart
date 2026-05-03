@@ -47,6 +47,8 @@ class LocalMusicService extends ChangeNotifier {
     '/storage/emulated/0/Downloads',
   ];
 
+  static const String _customScanPathsKey = 'local_custom_scan_paths';
+
   List<Song> get songs => List.unmodifiable(_songs);
   List<Album> get albums => List.unmodifiable(_albums);
   List<Artist> get artists => List.unmodifiable(_artists);
@@ -60,6 +62,61 @@ class LocalMusicService extends ChangeNotifier {
 
   List<String> get excludedFolders {
     return _prefs?.getStringList(_excludedFoldersKey) ?? [];
+  }
+
+  /// Get custom scan paths from SharedPreferences
+  List<String> get customScanPaths {
+    return _prefs?.getStringList(_customScanPathsKey) ?? [];
+  }
+
+  /// Add a custom scan path
+  Future<bool> addCustomScanPath(String path) async {
+    if (_prefs == null) return false;
+
+    final currentPaths = customScanPaths;
+    if (currentPaths.contains(path)) return true;
+
+    // Verify the path exists
+    final dir = Directory(path);
+    if (!await dir.exists()) return false;
+
+    currentPaths.add(path);
+    final success = await _prefs!.setStringList(_customScanPathsKey, currentPaths);
+    if (success) {
+      notifyListeners();
+    }
+    return success;
+  }
+
+  /// Remove a custom scan path
+  Future<bool> removeCustomScanPath(String path) async {
+    if (_prefs == null) return false;
+
+    final currentPaths = customScanPaths;
+    if (!currentPaths.contains(path)) return true;
+
+    currentPaths.remove(path);
+    final success = await _prefs!.setStringList(_customScanPathsKey, currentPaths);
+    if (success) {
+      notifyListeners();
+    }
+    return success;
+  }
+
+  /// Clear all custom scan paths
+  Future<bool> clearCustomScanPaths() async {
+    if (_prefs == null) return false;
+
+    final success = await _prefs!.remove(_customScanPathsKey);
+    notifyListeners();
+    return success;
+  }
+
+  /// Get all scan paths (default + custom)
+  List<String> get allScanPaths {
+    final custom = customScanPaths;
+    if (custom.isEmpty) return _getDefaultScanPaths();
+    return [..._getDefaultScanPaths(), ...custom];
   }
 
   Future<void> addExcludedFolder(String folderPath) async {
@@ -139,6 +196,27 @@ class LocalMusicService extends ChangeNotifier {
     return true;
   }
 
+  /// Pick a directory to add as a custom scan path
+  Future<String?> pickMusicDirectory() async {
+    if (Platform.isAndroid || Platform.isIOS) {
+      // For Android, try to use file_picker with directory selection
+      try {
+        final result = await FilePicker.platform.getDirectoryPath(
+          dialogTitle: 'Select Music Folder',
+        );
+        if (result != null) {
+          final added = await addCustomScanPath(result);
+          if (added) {
+            return result;
+          }
+        }
+      } catch (e) {
+        debugPrint('Error picking directory: $e');
+      }
+    }
+    return null;
+  }
+
   Future<int> pickAndAddFiles() async {
     if (!Platform.isIOS) return 0;
 
@@ -197,7 +275,7 @@ class LocalMusicService extends ChangeNotifier {
     return _songs.length - before;
   }
 
-  Future<void> scanForMusic({List<String>? customPaths}) async {
+  Future<void> scanForMusic({List<String>? overridePaths}) async {
     if (_isScanning) return;
 
     final hasPermission = await requestPermission();
@@ -213,7 +291,7 @@ class LocalMusicService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final paths = customPaths ?? _getDefaultScanPaths();
+      final paths = overridePaths ?? allScanPaths;
       final audioFiles = <File>[];
 
       for (final dirPath in paths) {
