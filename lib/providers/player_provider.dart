@@ -1761,6 +1761,12 @@ class PlayerProvider extends ChangeNotifier {
       try {
         final session = await AudioSession.instance;
         await session.setActive(true);
+
+        // If audio was supposed to be playing but got interrupted, resume it
+        if (_isPlaying && !_audioPlayer.playing) {
+          debugPrint('[Player] iOS: Resuming playback after audio session reactivation');
+          await _audioPlayer.play();
+        }
       } catch (_) {}
     }
   }
