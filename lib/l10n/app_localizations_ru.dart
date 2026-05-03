@@ -611,6 +611,17 @@ class AppLocalizationsRu extends AppLocalizations {
   String get noMusicFolders => 'Папки с музыкой не найдены';
 
   @override
+  String get sectionSavedProfiles => 'SAVED PROFILES';
+
+  @override
+  String get switchProfile => 'Switch Profile';
+
+  @override
+  String switchProfileConfirmation(String profile) {
+    return 'Connect to \"$profile\"?';
+  }
+
+  @override
   String get sectionAccount => 'АККАУНТ';
 
   @override

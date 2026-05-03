@@ -606,6 +606,17 @@ class AppLocalizationsPt extends AppLocalizations {
   String get noMusicFolders => 'Nenhuma pasta de música encontrada';
 
   @override
+  String get sectionSavedProfiles => 'SAVED PROFILES';
+
+  @override
+  String get switchProfile => 'Switch Profile';
+
+  @override
+  String switchProfileConfirmation(String profile) {
+    return 'Connect to \"$profile\"?';
+  }
+
+  @override
   String get sectionAccount => 'CONTA';
 
   @override

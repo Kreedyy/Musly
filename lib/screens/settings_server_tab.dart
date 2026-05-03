@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../models/music_folder.dart';
+import '../models/server_config.dart';
 import '../providers/auth_provider.dart';
 import '../providers/player_provider.dart';
 import '../services/jukebox_service.dart';
@@ -64,6 +65,8 @@ class _SettingsServerTabState extends State<SettingsServerTab> {
             ),
           ],
         ),
+        const SizedBox(height: 24),
+        _buildSavedProfilesSection(),
         const SizedBox(height: 24),
         _buildSection(
           title: l10n.sectionMusicFolders,
@@ -339,6 +342,124 @@ class _SettingsServerTabState extends State<SettingsServerTab> {
               ),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSavedProfilesSection() {
+    return FutureBuilder<List<ServerConfig>>(
+      future: Provider.of<AuthProvider>(context, listen: false).getSavedProfiles(),
+      builder: (context, snapshot) {
+        final profiles = snapshot.data ?? [];
+        if (profiles.isEmpty) return const SizedBox.shrink();
+
+        final l10n = AppLocalizations.of(context)!;
+        final authProvider = Provider.of<AuthProvider>(context);
+        final currentConfig = authProvider.config;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text(
+                l10n.sectionSavedProfiles,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
+                  color: _isDark
+                      ? AppTheme.darkSecondaryText
+                      : AppTheme.lightSecondaryText,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ),
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: _isDark ? AppTheme.darkSurface : Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Column(
+                  children: profiles.map((profile) {
+                    final isActive = currentConfig?.serverUrl == profile.serverUrl &&
+                        currentConfig?.username == profile.username;
+                    final label = profile.name?.isNotEmpty == true
+                        ? profile.name!
+                        : '${profile.username}@${Uri.tryParse(profile.serverUrl)?.host ?? profile.serverUrl}';
+
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                      leading: Icon(
+                        isActive
+                            ? CupertinoIcons.checkmark_circle_fill
+                            : CupertinoIcons.person_crop_circle,
+                        color: isActive
+                            ? const Color(0xFF34C759)
+                            : (_isDark
+                                ? AppTheme.darkSecondaryText
+                                : AppTheme.lightSecondaryText),
+                      ),
+                      title: Text(
+                        label,
+                        style: TextStyle(
+                          fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                          color: isActive
+                              ? Theme.of(context).colorScheme.primary
+                              : null,
+                        ),
+                      ),
+                      subtitle: Text(
+                        profile.serverUrl,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _isDark
+                              ? AppTheme.darkSecondaryText
+                              : AppTheme.lightSecondaryText,
+                        ),
+                      ),
+                      trailing: isActive
+                          ? const Icon(CupertinoIcons.checkmark,
+                              color: Color(0xFF34C759), size: 18)
+                          : null,
+                      onTap: isActive
+                          ? null
+                          : () async {
+                              final confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: Text(l10n.switchProfile),
+                                  content: Text(l10n.switchProfileConfirmation(label)),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx, false),
+                                      child: Text(l10n.cancel),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx, true),
+                                      child: Text(l10n.ok),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (confirmed == true && mounted) {
+                                final playerProvider =
+                                    Provider.of<PlayerProvider>(context, listen: false);
+                                await playerProvider.stop();
+                                await authProvider.switchProfile(profile);
+                              }
+                            },
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+          ],
         );
       },
     );

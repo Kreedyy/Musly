@@ -1240,6 +1240,24 @@ abstract class AppLocalizations {
   /// **'No music folders found'**
   String get noMusicFolders;
 
+  /// No description provided for @sectionSavedProfiles.
+  ///
+  /// In en, this message translates to:
+  /// **'SAVED PROFILES'**
+  String get sectionSavedProfiles;
+
+  /// No description provided for @switchProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch Profile'**
+  String get switchProfile;
+
+  /// No description provided for @switchProfileConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to \"{profile}\"?'**
+  String switchProfileConfirmation(String profile);
+
   /// No description provided for @sectionAccount.
   ///
   /// In en, this message translates to:

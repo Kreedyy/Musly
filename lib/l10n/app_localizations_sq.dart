@@ -608,6 +608,17 @@ class AppLocalizationsSq extends AppLocalizations {
   String get noMusicFolders => 'Nuk u gjet asnjë dosje muzike';
 
   @override
+  String get sectionSavedProfiles => 'SAVED PROFILES';
+
+  @override
+  String get switchProfile => 'Switch Profile';
+
+  @override
+  String switchProfileConfirmation(String profile) {
+    return 'Connect to \"$profile\"?';
+  }
+
+  @override
   String get sectionAccount => 'LLOGARIA';
 
   @override

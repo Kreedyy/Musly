@@ -599,6 +599,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get noMusicFolders => '未找到音乐文件夹';
 
   @override
+  String get sectionSavedProfiles => 'SAVED PROFILES';
+
+  @override
+  String get switchProfile => 'Switch Profile';
+
+  @override
+  String switchProfileConfirmation(String profile) {
+    return 'Connect to \"$profile\"?';
+  }
+
+  @override
   String get sectionAccount => '账户';
 
   @override

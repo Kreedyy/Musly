@@ -604,6 +604,17 @@ class AppLocalizationsSv extends AppLocalizations {
   String get noMusicFolders => 'Inga musik mappar hittades';
 
   @override
+  String get sectionSavedProfiles => 'SAVED PROFILES';
+
+  @override
+  String get switchProfile => 'Switch Profile';
+
+  @override
+  String switchProfileConfirmation(String profile) {
+    return 'Connect to \"$profile\"?';
+  }
+
+  @override
   String get sectionAccount => 'KONTO';
 
   @override

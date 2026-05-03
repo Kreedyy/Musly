@@ -759,6 +759,16 @@
   "sectionMusicFolders": "MUSIC FOLDERS",
   "musicFolders": "Music Folders",
   "noMusicFolders": "No music folders found",
+  "sectionSavedProfiles": "SAVED PROFILES",
+  "switchProfile": "Switch Profile",
+  "switchProfileConfirmation": "Connect to \"{profile}\"?",
+  "@switchProfileConfirmation": {
+    "placeholders": {
+      "profile": {
+        "type": "String"
+      }
+    }
+  },
   "sectionAccount": "ACCOUNT",
   "logoutConfirmation": "Are you sure you want to logout? This will also clear all cached data.",
 

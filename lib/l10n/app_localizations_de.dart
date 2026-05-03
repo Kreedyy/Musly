@@ -609,6 +609,17 @@ class AppLocalizationsDe extends AppLocalizations {
   String get noMusicFolders => 'Keine Musik Ordner gefunden';
 
   @override
+  String get sectionSavedProfiles => 'SAVED PROFILES';
+
+  @override
+  String get switchProfile => 'Switch Profile';
+
+  @override
+  String switchProfileConfirmation(String profile) {
+    return 'Connect to \"$profile\"?';
+  }
+
+  @override
   String get sectionAccount => 'KONTO';
 
   @override
