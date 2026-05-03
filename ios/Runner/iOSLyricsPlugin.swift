@@ -1,8 +1,6 @@
 import Flutter
 import UIKit
-#if canImport(ActivityKit)
 import ActivityKit
-#endif
 
 /// Plugin to manage synchronized lyrics on iOS Lock Screen via Live Activities
 public class iOSLyricsPlugin: NSObject, FlutterPlugin {
@@ -14,10 +12,8 @@ public class iOSLyricsPlugin: NSObject, FlutterPlugin {
     private var eventChannel: FlutterEventChannel?
     private var eventSink: FlutterEventSink?
     
-    /// Current Live Activity (only available on iOS 16.1+)
-    #if canImport(ActivityKit)
+    /// Current Live Activity
     private var currentActivity: Activity<LyricsWidgetAttributes>?
-    #endif
     
     /// Last known song info for Live Activity
     private var currentSongTitle: String = ""
@@ -47,24 +43,15 @@ public class iOSLyricsPlugin: NSObject, FlutterPlugin {
     }
     
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-        // Check if Live Activities are available (iOS 16.1+)
-        #if canImport(ActivityKit)
-        guard #available(iOS 16.1, *) else {
+        // Check if Live Activities are authorized
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
             result(FlutterError(
                 code: "UNAVAILABLE",
-                message: "Live Activities require iOS 16.1+",
+                message: "Live Activities not enabled by user",
                 details: nil
             ))
             return
         }
-        #else
-        result(FlutterError(
-            code: "UNAVAILABLE",
-            message: "Live Activities not supported on this iOS version",
-            details: nil
-        ))
-        return
-        #endif
         
         switch call.method {
         case "initialize":
@@ -102,15 +89,12 @@ public class iOSLyricsPlugin: NSObject, FlutterPlugin {
         }
     }
     
-    #if canImport(ActivityKit)
-    @available(iOS 16.1, *)
     private func initialize(result: @escaping FlutterResult) {
         // Check if Live Activities are supported
         let supportsLiveActivities = ActivityAuthorizationInfo().areActivitiesEnabled
         result(["supportsLiveActivities": supportsLiveActivities])
     }
     
-    @available(iOS 16.1, *)
     private func handleLyricsAvailable(args: [String: Any], result: @escaping FlutterResult) {
         let hasLyrics = args["hasLyrics"] as? Bool ?? false
         
@@ -123,7 +107,6 @@ public class iOSLyricsPlugin: NSObject, FlutterPlugin {
         }
     }
     
-    @available(iOS 16.1, *)
     private func updateLyrics(args: [String: Any], result: @escaping FlutterResult) {
         guard let currentLine = args["currentLine"] as? String else {
             result(FlutterError(code: "INVALID_ARGS", message: "Missing currentLine", details: nil))
@@ -135,7 +118,6 @@ public class iOSLyricsPlugin: NSObject, FlutterPlugin {
         result(["updated": true])
     }
     
-    @available(iOS 16.1, *)
     private func updateSongInfo(args: [String: Any], result: @escaping FlutterResult) {
         currentSongTitle = args["title"] as? String ?? ""
         currentArtist = args["artist"] as? String ?? ""
@@ -143,7 +125,6 @@ public class iOSLyricsPlugin: NSObject, FlutterPlugin {
         result(nil)
     }
     
-    @available(iOS 16.1, *)
     private func startLiveActivity(initialLine: String?) {
         // End any existing activity first
         if let activity = currentActivity {
@@ -177,7 +158,6 @@ public class iOSLyricsPlugin: NSObject, FlutterPlugin {
         }
     }
     
-    @available(iOS 16.1, *)
     private func updateLiveActivity(currentLine: String) {
         guard let activity = currentActivity else {
             // Start activity if not running
@@ -197,11 +177,6 @@ public class iOSLyricsPlugin: NSObject, FlutterPlugin {
     }
     
     private func endLiveActivity(result: FlutterResult? = nil) {
-        guard #available(iOS 16.1, *) else {
-            result?(nil)
-            return
-        }
-        
         guard let activity = currentActivity else {
             result?(nil)
             return
@@ -213,7 +188,6 @@ public class iOSLyricsPlugin: NSObject, FlutterPlugin {
             result?(["ended": true])
         }
     }
-    #endif
 }
 
 // MARK: - FlutterStreamHandler
@@ -229,9 +203,7 @@ extension iOSLyricsPlugin: FlutterStreamHandler {
     }
 }
 
-#if canImport(ActivityKit)
 // MARK: - Live Activity Attributes
-@available(iOS 16.1, *)
 struct LyricsWidgetAttributes: ActivityAttributes {
     /// Static data about the song
     public struct ContentState: Codable, Hashable {
@@ -245,4 +217,3 @@ struct LyricsWidgetAttributes: ActivityAttributes {
     var artist: String
     var artworkUrl: String?
 }
-#endif
