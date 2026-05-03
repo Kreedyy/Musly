@@ -413,6 +413,9 @@ class AppLocalizationsSq extends AppLocalizations {
   String get filterAll => 'Të gjitha';
 
   @override
+  String get faves => 'Faves';
+
+  @override
   String get filterPlaylists => 'Lista e këngëve';
 
   @override
@@ -423,6 +426,12 @@ class AppLocalizationsSq extends AppLocalizations {
 
   @override
   String get likedSongs => 'Këngët e pëlqyera';
+
+  @override
+  String get likedAlbums => 'Liked Albums';
+
+  @override
+  String get noLikedAlbums => 'No liked albums yet';
 
   @override
   String get radioStations => 'Stazioni Radio';

@@ -890,6 +890,12 @@ abstract class AppLocalizations {
   /// **'All'**
   String get filterAll;
 
+  /// No description provided for @faves.
+  ///
+  /// In en, this message translates to:
+  /// **'Faves'**
+  String get faves;
+
   /// No description provided for @filterPlaylists.
   ///
   /// In en, this message translates to:
@@ -913,6 +919,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Liked Songs'**
   String get likedSongs;
+
+  /// No description provided for @likedAlbums.
+  ///
+  /// In en, this message translates to:
+  /// **'Liked Albums'**
+  String get likedAlbums;
+
+  /// No description provided for @noLikedAlbums.
+  ///
+  /// In en, this message translates to:
+  /// **'No liked albums yet'**
+  String get noLikedAlbums;
 
   /// No description provided for @radioStations.
   ///

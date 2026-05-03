@@ -11,12 +11,11 @@ import '../utils/navigation_helper.dart';
 import 'album_screen.dart';
 import 'package:musly/screens/playlist_screen.dart';
 import 'favorites_screen.dart';
+import 'liked_albums_screen.dart';
+import 'playlists_screen.dart';
 import 'settings_screen.dart';
-import 'all_albums_screen.dart';
-import 'all_songs_screen.dart';
 import 'library_search_delegate.dart';
 import 'artist_screen.dart';
-import 'radio_screen.dart';
 import '../l10n/app_localizations.dart';
 import '../widgets/album_artwork.dart' show isLocalFilePath;
 
@@ -28,8 +27,8 @@ class LibraryScreen extends StatefulWidget {
 }
 
 class _LibraryScreenState extends State<LibraryScreen> {
-  String _selectedFilter = 'All';
-  final List<String> _filters = ['All', 'Faves', 'Albums', 'Artists', 'Songs'];
+  String _selectedFilter = 'Faves';
+  final List<String> _filters = ['Faves', 'Albums', 'Artists', 'Songs'];
 
   @override
   Widget build(BuildContext context) {
@@ -95,8 +94,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               builder: (context) {
                 final l10n = AppLocalizations.of(context)!;
                 final filterLabels = {
-                  'All': l10n.filterAll,
-                  'Faves': 'Faves',
+                  'Faves': l10n.faves,
                   'Albums': l10n.filterAlbums,
                   'Artists': l10n.filterArtists,
                   'Songs': l10n.songs,
@@ -117,7 +115,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           selected: isSelected,
                           onSelected: (selected) {
                             setState(() {
-                              _selectedFilter = selected ? filter : 'All';
+                              _selectedFilter = selected ? filter : 'Faves';
                             });
                           },
                           backgroundColor: isDark
@@ -147,68 +145,34 @@ class _LibraryScreenState extends State<LibraryScreen> {
           SliverToBoxAdapter(
             child: Column(
               children: [
-                if (_selectedFilter == 'Songs') ...[
+                if (_selectedFilter == 'Faves') ...[
+                  // Playlists folder
                   _SpotifyLibraryTile(
-                    icon: CupertinoIcons.music_note_list,
-                    iconColor: const Color(0xFF10B981),
-                    title: AppLocalizations.of(context)!.allSongs,
-                    subtitle: AppLocalizations.of(context)!.songs,
+                    icon: CupertinoIcons.list_bullet,
+                    iconColor: const Color(0xFF3B82F6),
+                    title: AppLocalizations.of(context)!.playlists,
+                    subtitle: AppLocalizations.of(context)!.yourPlaylists,
                     isGradient: false,
-                    onTap: () => _navigate(context, const AllSongsScreen()),
+                    onTap: () => _navigate(context, const PlaylistsScreen()),
                   ),
-                ],
-                if (_selectedFilter == 'All' || _selectedFilter == 'Faves') ...[
-                  if (_selectedFilter == 'All') ...[
-                    _SpotifyLibraryTile(
-                      icon: CupertinoIcons.heart_fill,
-                      iconColor: const Color(0xFF8B5CF6),
-                      title: AppLocalizations.of(context)!.likedSongs,
-                      subtitle: AppLocalizations.of(context)!.playlist,
-                      isGradient: true,
-                      onTap: () => _navigate(context, const FavoritesScreen()),
-                    ),
-                    _SpotifyLibraryTile(
-                      icon: CupertinoIcons.music_albums,
-                      iconColor: const Color(0xFFEC4899),
-                      title: AppLocalizations.of(context)!.allAlbums,
-                      subtitle: AppLocalizations.of(context)!.filterAlbums,
-                      isGradient: false,
-                      onTap: () => _navigate(context, const AllAlbumsScreen()),
-                    ),
-                    _SpotifyLibraryTile(
-                      icon: CupertinoIcons.music_note_list,
-                      iconColor: const Color(0xFF10B981),
-                      title: AppLocalizations.of(context)!.allSongs,
-                      subtitle: AppLocalizations.of(context)!.songs,
-                      isGradient: false,
-                      onTap: () => _navigate(context, const AllSongsScreen()),
-                    ),
-                    _SpotifyLibraryTile(
-                      icon: CupertinoIcons.radiowaves_right,
-                      iconColor: const Color(0xFF3B82F6),
-                      title: AppLocalizations.of(context)!.radioStations,
-                      subtitle: AppLocalizations.of(context)!.internetRadio,
-                      isGradient: false,
-                      onTap: () => _navigate(context, const RadioScreen()),
-                    ),
-                  ] else ...[
-                    _SpotifyLibraryTile(
-                      icon: CupertinoIcons.heart_fill,
-                      iconColor: const Color(0xFF8B5CF6),
-                      title: AppLocalizations.of(context)!.likedSongs,
-                      subtitle: AppLocalizations.of(context)!.playlist,
-                      isGradient: true,
-                      onTap: () => _navigate(context, const FavoritesScreen()),
-                    ),
-                    _SpotifyLibraryTile(
-                      icon: CupertinoIcons.music_albums,
-                      iconColor: const Color(0xFFEC4899),
-                      title: AppLocalizations.of(context)!.allAlbums,
-                      subtitle: AppLocalizations.of(context)!.filterAlbums,
-                      isGradient: false,
-                      onTap: () => _navigate(context, const AllAlbumsScreen()),
-                    ),
-                  ],
+                  // Liked Songs folder
+                  _SpotifyLibraryTile(
+                    icon: CupertinoIcons.heart_fill,
+                    iconColor: const Color(0xFF8B5CF6),
+                    title: AppLocalizations.of(context)!.likedSongs,
+                    subtitle: AppLocalizations.of(context)!.playlist,
+                    isGradient: true,
+                    onTap: () => _navigate(context, const FavoritesScreen()),
+                  ),
+                  // Liked Albums folder
+                  _SpotifyLibraryTile(
+                    icon: CupertinoIcons.star_fill,
+                    iconColor: const Color(0xFFFF9500),
+                    title: AppLocalizations.of(context)!.likedAlbums,
+                    subtitle: AppLocalizations.of(context)!.albums,
+                    isGradient: false,
+                    onTap: () => _navigate(context, const LikedAlbumsScreen()),
+                  ),
                 ],
               ],
             ),
@@ -239,7 +203,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
     final l10n = AppLocalizations.of(context)!;
     List<_LibraryItem> items = [];
 
-    if (_selectedFilter == 'All' || _selectedFilter == 'Faves') {
+    // Faves tab: show Playlists and Recent Albums
+    if (_selectedFilter == 'Faves') {
+      // Add playlists
       items.addAll(
         provider.playlists.map(
           (p) => _LibraryItem(
@@ -251,29 +217,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ),
         ),
       );
-    }
-
-    if (_selectedFilter == 'All') {
-      final albums = provider.isLocalOnlyMode
-          ? provider.cachedAllAlbums.take(20).toList()
-          : provider.recentAlbums.take(20).toList();
-      items.addAll(
-        albums.map(
-          (a) => _LibraryItem(
-            type: 'Album',
-            id: a.id,
-            name: a.name,
-            subtitle:
-                a.artistParticipants != null && a.artistParticipants!.isNotEmpty
-                ? a.artistParticipants!.map((r) => r.name).join(', ')
-                : (a.artist ?? ''),
-            coverArt: a.coverArt,
-          ),
-        ),
-      );
-    }
-
-    if (_selectedFilter == 'Faves') {
+      // Add recent albums (limited to 10)
       final recent = provider.isLocalOnlyMode
           ? provider.cachedAllAlbums.take(10).toList()
           : provider.recentAlbums.take(10).toList();
@@ -293,18 +237,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
       );
     }
 
-    if (_selectedFilter == 'All' || _selectedFilter == 'Albums') {
-      // When the Albums filter is active, prefer the full cached album list so
-      // that a subsequent loadRecentAlbums() network call (which returns only
-      // recently-played albums and can be empty on Navidrome) doesn't wipe the
-      // visible items. Fall back to recentAlbums only for the 'All' view.
+    // Albums tab: show all albums
+    if (_selectedFilter == 'Albums') {
       final albums = provider.isLocalOnlyMode
           ? provider.cachedAllAlbums
-          : (_selectedFilter == 'Albums'
-                ? (provider.cachedAllAlbums.isNotEmpty
-                      ? provider.cachedAllAlbums
-                      : provider.recentAlbums)
-                : provider.recentAlbums.take(20).toList());
+          : (provider.cachedAllAlbums.isNotEmpty
+                ? provider.cachedAllAlbums
+                : provider.recentAlbums);
       items.addAll(
         albums.map(
           (a) => _LibraryItem(
