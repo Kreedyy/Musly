@@ -129,7 +129,7 @@ class _MainScreenState extends State<MainScreen> {
     showDialog(
       context: context,
       builder: (context) => const SupportDialog(),
-      barrierDismissible: false,
+      barrierDismissible: true,
     );
   }
 

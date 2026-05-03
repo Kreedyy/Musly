@@ -128,7 +128,7 @@ class UsageTimeService extends ChangeNotifier with WidgetsBindingObserver {
         showDialog(
           context: context,
           builder: (context) => const SupportDialog(),
-          barrierDismissible: false,
+          barrierDismissible: true,
         );
       }
     });
