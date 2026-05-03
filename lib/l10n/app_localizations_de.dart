@@ -414,6 +414,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get filterAll => 'Alle';
 
   @override
+  String get faves => 'Faves';
+
+  @override
   String get filterPlaylists => 'Playlisten';
 
   @override
@@ -424,6 +427,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get likedSongs => 'Lieblingssongs';
+
+  @override
+  String get likedAlbums => 'Liked Albums';
+
+  @override
+  String get noLikedAlbums => 'No liked albums yet';
 
   @override
   String get radioStations => 'Radiosender';

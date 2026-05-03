@@ -417,6 +417,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get filterAll => 'Все';
 
   @override
+  String get faves => 'Faves';
+
+  @override
   String get filterPlaylists => 'Плейлисты';
 
   @override
@@ -427,6 +430,12 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get likedSongs => 'Понравившиеся песни';
+
+  @override
+  String get likedAlbums => 'Liked Albums';
+
+  @override
+  String get noLikedAlbums => 'No liked albums yet';
 
   @override
   String get radioStations => 'Радиостанции';

@@ -405,6 +405,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get filterAll => '全部';
 
   @override
+  String get faves => 'Faves';
+
+  @override
   String get filterPlaylists => '歌单';
 
   @override
@@ -415,6 +418,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get likedSongs => '喜欢的歌曲';
+
+  @override
+  String get likedAlbums => 'Liked Albums';
+
+  @override
+  String get noLikedAlbums => 'No liked albums yet';
 
   @override
   String get radioStations => '电台';
