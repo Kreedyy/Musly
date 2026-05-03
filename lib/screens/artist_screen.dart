@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
 import '../theme/app_theme.dart';
-import '../utils/navigation_helper.dart';
 import '../widgets/widgets.dart';
 import 'album_screen.dart';
 
@@ -258,9 +257,10 @@ class _ArtistScreenState extends State<ArtistScreen> {
                         return AlbumCard(
                           album: album,
                           size: double.infinity,
-                          onTap: () => NavigationHelper.push(
-                            context,
-                            AlbumScreen(albumId: album.id),
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => AlbumScreen(albumId: album.id),
+                            ),
                           ),
                         );
                       },
