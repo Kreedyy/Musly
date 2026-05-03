@@ -398,7 +398,7 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView>
     } else if (isLocalFilePath(_song.coverArt)) {
       imageUrl = _song.coverArt ?? '';
     } else {
-      imageUrl = subsonicService.getCoverArtUrl(_song.coverArt, size: 600);
+      imageUrl = subsonicService.getCoverArtUrl(_song.coverArt, size: 1200);
     }
 
     return Scaffold(
@@ -519,8 +519,8 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView>
                             : CachedNetworkImage(
                                 imageUrl: imageUrl,
                                 fit: BoxFit.cover,
-                                memCacheWidth: 600,
-                                memCacheHeight: 600,
+                                memCacheWidth: 1200,
+                                memCacheHeight: 1200,
                                 fadeInDuration: Duration.zero,
                                 fadeOutDuration: Duration.zero,
                                 useOldImageOnUrlChange: true,
@@ -728,8 +728,8 @@ class _SyncedLyricsViewState extends State<SyncedLyricsView>
             : CachedNetworkImage(
                 imageUrl: imageUrl,
                 fit: BoxFit.cover,
-                memCacheWidth: 300,
-                memCacheHeight: 300,
+                memCacheWidth: 1200,
+                memCacheHeight: 1200,
                 fadeInDuration: Duration.zero,
                 fadeOutDuration: Duration.zero,
                 useOldImageOnUrlChange: true,

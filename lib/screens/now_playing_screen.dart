@@ -449,7 +449,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
             );
             _cachedImageUrl = subsonicService.getCoverArtUrl(
               song.coverArt,
-              size: 600,
+              size: 1200,
             );
             _cachedThumbnailUrl = subsonicService.getCoverArtUrl(
               song.coverArt,
@@ -1572,7 +1572,7 @@ class _AlbumArtworkSection extends StatelessWidget {
                             File(imageUrl),
                             key: ValueKey(imageUrl),
                             fit: BoxFit.contain,
-                            cacheWidth: 600,
+                            cacheWidth: 1200,
                             errorBuilder: (ctx, e, _) =>
                                 _buildNoArtPlaceholder(ctx),
                           )
@@ -1580,9 +1580,9 @@ class _AlbumArtworkSection extends StatelessWidget {
                             key: ValueKey(imageUrl),
                             imageUrl: imageUrl,
                             fit: BoxFit.contain,
-                            memCacheWidth: 600,
-                            maxWidthDiskCache: 600,
-                            maxHeightDiskCache: 600,
+                            memCacheWidth: 1200,
+                            maxWidthDiskCache: 1200,
+                            maxHeightDiskCache: 1200,
                             useOldImageOnUrlChange: true,
                             fadeInDuration: Duration.zero,
                             fadeOutDuration: Duration.zero,
@@ -1752,16 +1752,16 @@ class _SwipeableAlbumArtwork extends StatelessWidget {
                 File(previewImageUrl!),
                 key: ValueKey(previewImageUrl),
                 fit: BoxFit.contain,
-                cacheWidth: 600,
+                cacheWidth: 1200,
                 errorBuilder: (ctx, e, _) => _buildNoArtPlaceholder(ctx),
               )
             : CachedNetworkImage(
                 key: ValueKey(previewImageUrl),
                 imageUrl: previewImageUrl!,
                 fit: BoxFit.contain,
-                memCacheWidth: 600,
-                maxWidthDiskCache: 600,
-                maxHeightDiskCache: 600,
+                memCacheWidth: 1200,
+                maxWidthDiskCache: 1200,
+                maxHeightDiskCache: 1200,
                 useOldImageOnUrlChange: true,
                 fadeInDuration: Duration.zero,
                 fadeOutDuration: Duration.zero,
