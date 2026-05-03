@@ -822,6 +822,12 @@
           }
       }
   },
+  "parallelDownloads": "Parallel Downloads",
+  "parallelDownloadsSubtitle": "Download multiple songs simultaneously",
+  "downloadSingular": "download",
+  "downloadPlural": "downloads",
+  "slowerButStable": "Slower but more stable",
+  "fasterButMoreData": "Faster but uses more data",
   "libraryDownloadStarted": "Library download started",
   "deleteDownloads": "Delete All Downloads",
   "downloadsDeleted": "All downloads deleted",

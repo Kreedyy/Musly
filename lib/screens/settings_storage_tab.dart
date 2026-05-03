@@ -31,6 +31,7 @@ class _SettingsStorageTabState extends State<SettingsStorageTab> {
   final int _totalSongs = 0;
   int _downloadedCount = 0;
   String _downloadedSize = '0 B';
+  int _parallelDownloads = 3;
 
   bool get _isDark => Theme.of(context).brightness == Brightness.dark;
 
@@ -68,6 +69,7 @@ class _SettingsStorageTabState extends State<SettingsStorageTab> {
       _imageCacheEnabled = _cacheSettings.getImageCacheEnabled();
       _musicCacheEnabled = _cacheSettings.getMusicCacheEnabled();
       _bpmCacheEnabled = _cacheSettings.getBpmCacheEnabled();
+      _parallelDownloads = _offlineService.getParallelDownloadsCount();
     });
   }
 
@@ -127,6 +129,8 @@ class _SettingsStorageTabState extends State<SettingsStorageTab> {
         _buildSection(
           title: AppLocalizations.of(context)!.sectionOfflineDownloads,
           children: [
+            _buildParallelDownloadsTile(),
+            _buildDivider(),
             _buildOfflineInfo(),
             _buildDivider(),
             _buildDownloadAllLibraryButton(),
@@ -441,6 +445,89 @@ class _SettingsStorageTabState extends State<SettingsStorageTab> {
           const SnackBar(content: Text('Folder removed')),
         );
       }
+    }
+  }
+
+  Widget _buildParallelDownloadsTile() {
+    final l10n = AppLocalizations.of(context)!;
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      leading: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF007AFF), Color(0xFF5AC8FA)],
+          ),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Icon(CupertinoIcons.arrow_down_to_line, color: Colors.white, size: 18),
+      ),
+      title: Text(l10n.parallelDownloads, style: const TextStyle(fontSize: 16)),
+      subtitle: Text(
+        l10n.parallelDownloadsSubtitle,
+        style: TextStyle(
+          fontSize: 13,
+          color: _isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
+        ),
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$_parallelDownloads',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Icon(
+            CupertinoIcons.chevron_right,
+            size: 16,
+            color: _isDark ? AppTheme.darkSecondaryText : AppTheme.lightSecondaryText,
+          ),
+        ],
+      ),
+      onTap: _showParallelDownloadsDialog,
+    );
+  }
+
+  Future<void> _showParallelDownloadsDialog() async {
+    final l10n = AppLocalizations.of(context)!;
+    final selected = await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.parallelDownloads),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [1, 2, 3, 4, 5].map((count) => RadioListTile<int>(
+            title: Text('$count ${count == 1 ? l10n.downloadSingular : l10n.downloadPlural}'),
+            subtitle: count == 1
+              ? Text(l10n.slowerButStable)
+              : count == 5
+                ? Text(l10n.fasterButMoreData)
+                : null,
+            value: count,
+            groupValue: _parallelDownloads,
+            onChanged: (value) => Navigator.pop(context, value),
+          )).toList(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(l10n.cancel),
+          ),
+        ],
+      ),
+    );
+
+    if (selected != null && selected != _parallelDownloads) {
+      await _offlineService.setParallelDownloadsCount(selected);
+      setState(() {
+        _parallelDownloads = selected;
+      });
     }
   }
 

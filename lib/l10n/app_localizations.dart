@@ -1442,6 +1442,42 @@ abstract class AppLocalizations {
   /// **'This will download {count} songs to your device. This may take a while and use significant storage space.\n\nContinue?'**
   String downloadLibraryConfirm(int count);
 
+  /// No description provided for @parallelDownloads.
+  ///
+  /// In en, this message translates to:
+  /// **'Parallel Downloads'**
+  String get parallelDownloads;
+
+  /// No description provided for @parallelDownloadsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Download multiple songs simultaneously'**
+  String get parallelDownloadsSubtitle;
+
+  /// No description provided for @downloadSingular.
+  ///
+  /// In en, this message translates to:
+  /// **'download'**
+  String get downloadSingular;
+
+  /// No description provided for @downloadPlural.
+  ///
+  /// In en, this message translates to:
+  /// **'downloads'**
+  String get downloadPlural;
+
+  /// No description provided for @slowerButStable.
+  ///
+  /// In en, this message translates to:
+  /// **'Slower but more stable'**
+  String get slowerButStable;
+
+  /// No description provided for @fasterButMoreData.
+  ///
+  /// In en, this message translates to:
+  /// **'Faster but uses more data'**
+  String get fasterButMoreData;
+
   /// No description provided for @libraryDownloadStarted.
   ///
   /// In en, this message translates to:

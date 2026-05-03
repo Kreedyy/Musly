@@ -713,6 +713,25 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get parallelDownloads => 'Parallel Downloads';
+
+  @override
+  String get parallelDownloadsSubtitle =>
+      'Download multiple songs simultaneously';
+
+  @override
+  String get downloadSingular => 'download';
+
+  @override
+  String get downloadPlural => 'downloads';
+
+  @override
+  String get slowerButStable => 'Slower but more stable';
+
+  @override
+  String get fasterButMoreData => 'Faster but uses more data';
+
+  @override
   String get libraryDownloadStarted => 'Descarga de la Biblioteca iniciada';
 
   @override
