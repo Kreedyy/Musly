@@ -82,7 +82,7 @@ class SubsonicService {
     );
   }
 
-  void configure(ServerConfig config) {
+  Future<void> configure(ServerConfig config) async {
     _config = config;
     if (config.isJellyfin) {
       _jellyfin ??= JellyfinService();
@@ -96,7 +96,7 @@ class SubsonicService {
       _jellyfin = null;
       _youtube?.dispose();
       _youtube = null;
-      _configureCertificateValidation(
+      await _configureCertificateValidation(
         config.allowSelfSignedCertificates,
         customCertPath: config.customCertificatePath,
         clientCertPath: config.clientCertificatePath,
@@ -124,12 +124,12 @@ class SubsonicService {
     return getStreamUrl(song.id);
   }
 
-  void _configureCertificateValidation(
+  Future<void> _configureCertificateValidation(
     bool allowSelfSigned, {
     String? customCertPath,
     String? clientCertPath,
     String? clientCertPassword,
-  }) {
+  }) async {
     _dio = Dio();
     _dio.options.connectTimeout = const Duration(seconds: 30);
     _dio.options.receiveTimeout = const Duration(seconds: 30);
@@ -140,27 +140,46 @@ class SubsonicService {
     final hasClientCert = clientCertPath != null && clientCertPath.isNotEmpty;
 
     if (hasCustomServerCert || allowSelfSigned || hasClientCert) {
+      // Pre-load certificate files asynchronously to avoid blocking UI
+      Uint8List? customServerCertBytes;
+      Uint8List? clientCertBytes;
+      
+      if (hasCustomServerCert) {
+        try {
+          final file = File(customCertPath);
+          if (await file.exists()) {
+            customServerCertBytes = await file.readAsBytes();
+          }
+        } catch (e) {
+          debugPrint('Failed to load custom server certificate: $e');
+        }
+      }
+      
+      if (hasClientCert) {
+        try {
+          final file = File(clientCertPath);
+          if (await file.exists()) {
+            clientCertBytes = await file.readAsBytes();
+          }
+        } catch (e) {
+          debugPrint('Failed to load client certificate: $e');
+        }
+      }
+
       HttpClient createClient() {
         try {
           final context = SecurityContext(withTrustedRoots: true);
 
-          if (hasCustomServerCert) {
-            final file = File(customCertPath);
-            if (file.existsSync()) {
-              context.setTrustedCertificatesBytes(file.readAsBytesSync());
-            }
+          if (hasCustomServerCert && customServerCertBytes != null) {
+            context.setTrustedCertificatesBytes(customServerCertBytes);
           }
 
-          if (hasClientCert) {
-            final file = File(clientCertPath);
-            if (file.existsSync()) {
-              final bytes = file.readAsBytesSync();
-              final password = clientCertPassword;
-              
-              context.useCertificateChainBytes(bytes, password: password);
-              
-              context.usePrivateKeyBytes(bytes, password: password);
-            }
+          if (hasClientCert && clientCertBytes != null) {
+            final password = clientCertPassword;
+            
+            context.useCertificateChainBytes(clientCertBytes, password: password);
+            
+            context.usePrivateKeyBytes(clientCertBytes, password: password);
           }
 
           final client = HttpClient(context: context);
