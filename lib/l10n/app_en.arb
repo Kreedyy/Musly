@@ -567,6 +567,36 @@
     "description": "Show Star Ratings toggle subtitle"
   },
 
+  "showMiniPlayerHeart": "Show Heart Button",
+  "@showMiniPlayerHeart": {
+    "description": "Show Heart button in mini player toggle label"
+  },
+
+  "showMiniPlayerHeartSubtitle": "Add to favorites from mini player",
+  "@showMiniPlayerHeartSubtitle": {
+    "description": "Show Heart button in mini player toggle subtitle"
+  },
+
+  "showMiniPlayerRepeat": "Show Repeat Button",
+  "@showMiniPlayerRepeat": {
+    "description": "Show Repeat button in mini player toggle label"
+  },
+
+  "showMiniPlayerRepeatSubtitle": "Toggle repeat mode from mini player",
+  "@showMiniPlayerRepeatSubtitle": {
+    "description": "Show Repeat button in mini player toggle subtitle"
+  },
+
+  "showMiniPlayerShuffle": "Show Shuffle Button",
+  "@showMiniPlayerShuffle": {
+    "description": "Show Shuffle button in mini player toggle label"
+  },
+
+  "showMiniPlayerShuffleSubtitle": "Toggle shuffle from mini player",
+  "@showMiniPlayerShuffleSubtitle": {
+    "description": "Show Shuffle button in mini player toggle subtitle"
+  },
+
   "enableRecommendations": "Enable Recommendations",
   "@enableRecommendations": {
     "description": "Enable Recommendations toggle label"

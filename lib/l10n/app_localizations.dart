@@ -800,6 +800,42 @@ abstract class AppLocalizations {
   /// **'Rate songs and view ratings'**
   String get showStarRatingsSubtitle;
 
+  /// Show Heart button in mini player toggle label
+  ///
+  /// In en, this message translates to:
+  /// **'Show Heart Button'**
+  String get showMiniPlayerHeart;
+
+  /// Show Heart button in mini player toggle subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'Add to favorites from mini player'**
+  String get showMiniPlayerHeartSubtitle;
+
+  /// Show Repeat button in mini player toggle label
+  ///
+  /// In en, this message translates to:
+  /// **'Show Repeat Button'**
+  String get showMiniPlayerRepeat;
+
+  /// Show Repeat button in mini player toggle subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle repeat mode from mini player'**
+  String get showMiniPlayerRepeatSubtitle;
+
+  /// Show Shuffle button in mini player toggle label
+  ///
+  /// In en, this message translates to:
+  /// **'Show Shuffle Button'**
+  String get showMiniPlayerShuffle;
+
+  /// Show Shuffle button in mini player toggle subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle shuffle from mini player'**
+  String get showMiniPlayerShuffleSubtitle;
+
   /// Enable Recommendations toggle label
   ///
   /// In en, this message translates to:

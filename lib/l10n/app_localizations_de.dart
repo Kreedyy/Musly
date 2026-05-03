@@ -363,6 +363,25 @@ class AppLocalizationsDe extends AppLocalizations {
   String get showStarRatingsSubtitle => 'Bewerte Songs und sehe Bewertungen an';
 
   @override
+  String get showMiniPlayerHeart => 'Show Heart Button';
+
+  @override
+  String get showMiniPlayerHeartSubtitle => 'Add to favorites from mini player';
+
+  @override
+  String get showMiniPlayerRepeat => 'Show Repeat Button';
+
+  @override
+  String get showMiniPlayerRepeatSubtitle =>
+      'Toggle repeat mode from mini player';
+
+  @override
+  String get showMiniPlayerShuffle => 'Show Shuffle Button';
+
+  @override
+  String get showMiniPlayerShuffleSubtitle => 'Toggle shuffle from mini player';
+
+  @override
   String get enableRecommendations => 'Empfehlungen aktivieren';
 
   @override

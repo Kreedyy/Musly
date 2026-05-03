@@ -23,6 +23,9 @@ class _SettingsDisplayTabState extends State<SettingsDisplayTab> {
   final _playerUiSettings = PlayerUiSettingsService();
   bool _showVolumeSlider = true;
   bool _showStarRatings = false;
+  bool _showMiniPlayerHeart = false;
+  bool _showMiniPlayerRepeat = false;
+  bool _showMiniPlayerShuffle = false;
   double _albumArtCornerRadius = 8.0;
   String _artworkShape = 'rounded';
   String _artworkShadow = 'soft';
@@ -55,6 +58,9 @@ class _SettingsDisplayTabState extends State<SettingsDisplayTab> {
     setState(() {
       _showVolumeSlider = _playerUiSettings.getShowVolumeSlider();
       _showStarRatings = _playerUiSettings.getShowStarRatings();
+      _showMiniPlayerHeart = _playerUiSettings.getShowMiniPlayerHeart();
+      _showMiniPlayerRepeat = _playerUiSettings.getShowMiniPlayerRepeat();
+      _showMiniPlayerShuffle = _playerUiSettings.getShowMiniPlayerShuffle();
       _albumArtCornerRadius = _playerUiSettings.getAlbumArtCornerRadius();
       _artworkShape = _playerUiSettings.getArtworkShape();
       _artworkShadow = _playerUiSettings.getArtworkShadow();
@@ -91,6 +97,12 @@ class _SettingsDisplayTabState extends State<SettingsDisplayTab> {
             _buildVolumeSliderToggle(),
             _buildDivider(),
             _buildStarRatingsToggle(),
+            _buildDivider(),
+            _buildMiniPlayerHeartToggle(),
+            _buildDivider(),
+            _buildMiniPlayerRepeatToggle(),
+            _buildDivider(),
+            _buildMiniPlayerShuffleToggle(),
             if (_isDesktop) ...[
               _buildDivider(),
               _buildDiscordRpcToggle(),
@@ -336,6 +348,132 @@ class _SettingsDisplayTabState extends State<SettingsDisplayTab> {
         onChanged: (value) async {
           setState(() => _showStarRatings = value);
           await _playerUiSettings.setShowStarRatings(value);
+        },
+      ),
+    );
+  }
+
+  Widget _buildMiniPlayerHeartToggle() {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      leading: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFF2D55), Color(0xFFFF6B6B)],
+          ),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Icon(
+          CupertinoIcons.heart_fill,
+          color: Colors.white,
+          size: 18,
+        ),
+      ),
+      title: Text(
+        AppLocalizations.of(context)!.showMiniPlayerHeart,
+        style: const TextStyle(fontSize: 16),
+      ),
+      subtitle: Text(
+        AppLocalizations.of(context)!.showMiniPlayerHeartSubtitle,
+        style: TextStyle(
+          fontSize: 13,
+          color: _isDark
+              ? AppTheme.darkSecondaryText
+              : AppTheme.lightSecondaryText,
+        ),
+      ),
+      trailing: CupertinoSwitch(
+        value: _showMiniPlayerHeart,
+        activeTrackColor: Theme.of(context).colorScheme.primary,
+        onChanged: (value) async {
+          setState(() => _showMiniPlayerHeart = value);
+          await _playerUiSettings.setShowMiniPlayerHeart(value);
+        },
+      ),
+    );
+  }
+
+  Widget _buildMiniPlayerRepeatToggle() {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      leading: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF34C759), Color(0xFF30D158)],
+          ),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Icon(
+          CupertinoIcons.repeat,
+          color: Colors.white,
+          size: 18,
+        ),
+      ),
+      title: Text(
+        AppLocalizations.of(context)!.showMiniPlayerRepeat,
+        style: const TextStyle(fontSize: 16),
+      ),
+      subtitle: Text(
+        AppLocalizations.of(context)!.showMiniPlayerRepeatSubtitle,
+        style: TextStyle(
+          fontSize: 13,
+          color: _isDark
+              ? AppTheme.darkSecondaryText
+              : AppTheme.lightSecondaryText,
+        ),
+      ),
+      trailing: CupertinoSwitch(
+        value: _showMiniPlayerRepeat,
+        activeTrackColor: Theme.of(context).colorScheme.primary,
+        onChanged: (value) async {
+          setState(() => _showMiniPlayerRepeat = value);
+          await _playerUiSettings.setShowMiniPlayerRepeat(value);
+        },
+      ),
+    );
+  }
+
+  Widget _buildMiniPlayerShuffleToggle() {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      leading: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF5856D6), Color(0xFF7B68EE)],
+          ),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Icon(
+          CupertinoIcons.shuffle,
+          color: Colors.white,
+          size: 18,
+        ),
+      ),
+      title: Text(
+        AppLocalizations.of(context)!.showMiniPlayerShuffle,
+        style: const TextStyle(fontSize: 16),
+      ),
+      subtitle: Text(
+        AppLocalizations.of(context)!.showMiniPlayerShuffleSubtitle,
+        style: TextStyle(
+          fontSize: 13,
+          color: _isDark
+              ? AppTheme.darkSecondaryText
+              : AppTheme.lightSecondaryText,
+        ),
+      ),
+      trailing: CupertinoSwitch(
+        value: _showMiniPlayerShuffle,
+        activeTrackColor: Theme.of(context).colorScheme.primary,
+        onChanged: (value) async {
+          setState(() => _showMiniPlayerShuffle = value);
+          await _playerUiSettings.setShowMiniPlayerShuffle(value);
         },
       ),
     );

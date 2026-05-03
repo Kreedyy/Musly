@@ -361,6 +361,25 @@ class AppLocalizationsSv extends AppLocalizations {
   String get showStarRatingsSubtitle => 'Betygsätt låtar och visa betyg';
 
   @override
+  String get showMiniPlayerHeart => 'Show Heart Button';
+
+  @override
+  String get showMiniPlayerHeartSubtitle => 'Add to favorites from mini player';
+
+  @override
+  String get showMiniPlayerRepeat => 'Show Repeat Button';
+
+  @override
+  String get showMiniPlayerRepeatSubtitle =>
+      'Toggle repeat mode from mini player';
+
+  @override
+  String get showMiniPlayerShuffle => 'Show Shuffle Button';
+
+  @override
+  String get showMiniPlayerShuffleSubtitle => 'Toggle shuffle from mini player';
+
+  @override
   String get enableRecommendations => 'Aktivera Rekommendationer';
 
   @override
