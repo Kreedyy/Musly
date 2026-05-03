@@ -14,7 +14,6 @@ import 'services/audio_handler.dart';
 import 'services/transcoding_service.dart';
 import 'services/local_music_service.dart';
 import 'services/analytics_service.dart';
-import 'widgets/support_dialog.dart';
 import 'widgets/privacy_policy_dialog.dart';
 import 'providers/providers.dart';
 import 'screens/screens.dart';
@@ -42,21 +41,6 @@ Future<void> _showPrivacyPolicyIfNeeded() async {
       if (result == false) {
         await PrivacyPolicyDialog.markAccepted();
       }
-    }
-  }
-}
-
-/// Shows the support dialog if needed (Discord/Donation)
-Future<void> _showSupportDialogIfNeeded() async {
-  if (await SupportDialog.shouldShow()) {
-    // Small delay to ensure UI is fully loaded
-    await Future.delayed(const Duration(milliseconds: 500));
-    if (navigatorKey.currentContext != null) {
-      showDialog(
-        context: navigatorKey.currentContext!,
-        builder: (context) => const SupportDialog(),
-        barrierDismissible: false,
-      );
     }
   }
 }
@@ -252,10 +236,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
           body: Center(child: const CircularProgressIndicator()),
         );
       case AuthState.authenticated:
-        // Show privacy policy first, then support dialog after successful login
+        // Show privacy policy first if needed
         WidgetsBinding.instance.addPostFrameCallback((_) async {
           await _showPrivacyPolicyIfNeeded();
-          await _showSupportDialogIfNeeded();
         });
         return const MainScreen();
       case AuthState.offlineMode:
