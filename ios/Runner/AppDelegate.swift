@@ -30,11 +30,11 @@ import AVFoundation
         registerAirPlayButtonFactory(with: airPlayRegistrar!)
       }
       
-      // Lyrics Plugin for lock screen lyrics
-      let lyricsPluginRegistrar = registrar(forPlugin: "iOSLyricsPlugin")
-      if lyricsPluginRegistrar != nil {
-        iOSLyricsPlugin.register(with: lyricsPluginRegistrar!)
-      }
+      // Lyrics Plugin for lock screen lyrics (disabled - requires iOS 16.1+ and ActivityKit)
+      // let lyricsPluginRegistrar = registrar(forPlugin: "iOSLyricsPlugin")
+      // if lyricsPluginRegistrar != nil {
+      //   iOSLyricsPlugin.register(with: lyricsPluginRegistrar!)
+      // }
     }
     
     // Configure audio session for background playback
