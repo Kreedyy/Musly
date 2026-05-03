@@ -375,7 +375,7 @@ class _SettingsServerTabState extends State<SettingsServerTab> {
                 ),
               ),
             ),
-            Container(
+              Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
                 color: _isDark ? AppTheme.darkSurface : Colors.white,
@@ -384,78 +384,101 @@ class _SettingsServerTabState extends State<SettingsServerTab> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: Column(
-                  children: profiles.map((profile) {
-                    final isActive = currentConfig?.serverUrl == profile.serverUrl &&
-                        currentConfig?.username == profile.username;
-                    final label = profile.name?.isNotEmpty == true
-                        ? profile.name!
-                        : '${profile.username}@${Uri.tryParse(profile.serverUrl)?.host ?? profile.serverUrl}';
+                  children: [
+                    ...profiles.map((profile) {
+                      final isActive = currentConfig?.serverUrl == profile.serverUrl &&
+                          currentConfig?.username == profile.username;
+                      final label = profile.name?.isNotEmpty == true
+                          ? profile.name!
+                          : '${profile.username}@${Uri.tryParse(profile.serverUrl)?.host ?? profile.serverUrl}';
 
-                    return ListTile(
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                        leading: Icon(
+                          isActive
+                              ? CupertinoIcons.checkmark_circle_fill
+                              : CupertinoIcons.person_crop_circle,
+                          color: isActive
+                              ? const Color(0xFF34C759)
+                              : (_isDark
+                                  ? AppTheme.darkSecondaryText
+                                  : AppTheme.lightSecondaryText),
+                        ),
+                        title: Text(
+                          label,
+                          style: TextStyle(
+                            fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                            color: isActive
+                                ? Theme.of(context).colorScheme.primary
+                                : null,
+                          ),
+                        ),
+                        subtitle: Text(
+                          profile.serverUrl,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: _isDark
+                                ? AppTheme.darkSecondaryText
+                                : AppTheme.lightSecondaryText,
+                          ),
+                        ),
+                        trailing: isActive
+                            ? const Icon(CupertinoIcons.checkmark,
+                                color: Color(0xFF34C759), size: 18)
+                            : null,
+                        onTap: isActive
+                            ? null
+                            : () async {
+                                final confirmed = await showDialog<bool>(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: Text(l10n.switchProfile),
+                                    content: Text(l10n.switchProfileConfirmation(label)),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(ctx, false),
+                                        child: Text(l10n.cancel),
+                                      ),
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(ctx, true),
+                                        child: Text(l10n.ok),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                if (confirmed == true && mounted) {
+                                  final playerProvider =
+                                      Provider.of<PlayerProvider>(context, listen: false);
+                                  await playerProvider.stop();
+                                  await authProvider.switchProfile(profile);
+                                }
+                              },
+                      );
+                    }),
+                    Divider(height: 1, color: _isDark ? AppTheme.darkDivider : AppTheme.lightDivider),
+                    ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                       leading: Icon(
-                        isActive
-                            ? CupertinoIcons.checkmark_circle_fill
-                            : CupertinoIcons.person_crop_circle,
-                        color: isActive
-                            ? const Color(0xFF34C759)
-                            : (_isDark
-                                ? AppTheme.darkSecondaryText
-                                : AppTheme.lightSecondaryText),
+                        CupertinoIcons.plus_circle,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                       title: Text(
-                        label,
+                        l10n.addProfile,
                         style: TextStyle(
-                          fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-                          color: isActive
-                              ? Theme.of(context).colorScheme.primary
-                              : null,
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                      subtitle: Text(
-                        profile.serverUrl,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: _isDark
-                              ? AppTheme.darkSecondaryText
-                              : AppTheme.lightSecondaryText,
-                        ),
-                      ),
-                      trailing: isActive
-                          ? const Icon(CupertinoIcons.checkmark,
-                              color: Color(0xFF34C759), size: 18)
-                          : null,
-                      onTap: isActive
-                          ? null
-                          : () async {
-                              final confirmed = await showDialog<bool>(
-                                context: context,
-                                builder: (ctx) => AlertDialog(
-                                  title: Text(l10n.switchProfile),
-                                  content: Text(l10n.switchProfileConfirmation(label)),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(ctx, false),
-                                      child: Text(l10n.cancel),
-                                    ),
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(ctx, true),
-                                      child: Text(l10n.ok),
-                                    ),
-                                  ],
-                                ),
-                              );
-                              if (confirmed == true && mounted) {
-                                final playerProvider =
-                                    Provider.of<PlayerProvider>(context, listen: false);
-                                await playerProvider.stop();
-                                await authProvider.switchProfile(profile);
-                              }
-                            },
-                    );
-                  }).toList(),
+                      onTap: () {
+                        // Navigate to login screen to add new profile
+                        final playerProvider = Provider.of<PlayerProvider>(context, listen: false);
+                        playerProvider.stop();
+                        authProvider.disconnect();
+                      },
+                    ),
+                  ],
                 ),
               ),
             ),

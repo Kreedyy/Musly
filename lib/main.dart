@@ -8,6 +8,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 
 import 'l10n/app_localizations.dart';
+import 'models/server_config.dart';
 import 'services/services.dart';
 import 'services/audio_handler.dart';
 import 'services/transcoding_service.dart';
@@ -325,6 +326,8 @@ class _ServerUnreachableScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
+              _buildSwitchProfileButton(context),
+              const SizedBox(height: 12),
               if (hasOfflineContent) ...[
                 SizedBox(
                   width: double.infinity,
@@ -344,6 +347,96 @@ class _ServerUnreachableScreen extends StatelessWidget {
                   label: Text(AppLocalizations.of(context)!.disconnect),
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSwitchProfileButton(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final l10n = AppLocalizations.of(context)!;
+
+    return FutureBuilder<List<ServerConfig>>(
+      future: authProvider.getSavedProfiles(),
+      builder: (context, snapshot) {
+        final profiles = snapshot.data ?? [];
+        if (profiles.isEmpty) return const SizedBox.shrink();
+
+        final currentConfig = authProvider.config;
+        final otherProfiles = profiles.where((p) =>
+          p.serverUrl != currentConfig?.serverUrl ||
+          p.username != currentConfig?.username,
+        ).toList();
+
+        if (otherProfiles.isEmpty) return const SizedBox.shrink();
+
+        return SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => _showSwitchProfileDialog(context, otherProfiles),
+            icon: const Icon(Icons.swap_horiz_rounded),
+            label: Text(l10n.switchServer),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showSwitchProfileDialog(BuildContext context, List<ServerConfig> profiles) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final l10n = AppLocalizations.of(context)!;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(ctx).brightness == Brightness.dark
+              ? AppTheme.darkSurface
+              : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                width: 36,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Theme.of(ctx).brightness == Brightness.dark
+                      ? AppTheme.darkDivider
+                      : AppTheme.lightDivider,
+                  borderRadius: BorderRadius.circular(2.5),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                l10n.switchServer,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ...profiles.map((profile) {
+                final label = profile.name?.isNotEmpty == true
+                    ? profile.name!
+                    : '${profile.username}@${Uri.tryParse(profile.serverUrl)?.host ?? profile.serverUrl}';
+                return ListTile(
+                  leading: const Icon(Icons.person_outline),
+                  title: Text(label),
+                  subtitle: Text(profile.serverUrl, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    await authProvider.switchProfile(profile);
+                  },
+                );
+              }),
+              const SizedBox(height: 8),
             ],
           ),
         ),

@@ -1252,6 +1252,18 @@ abstract class AppLocalizations {
   /// **'Switch Profile'**
   String get switchProfile;
 
+  /// No description provided for @switchServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch Server'**
+  String get switchServer;
+
+  /// No description provided for @addProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Profile'**
+  String get addProfile;
+
   /// No description provided for @switchProfileConfirmation.
   ///
   /// In en, this message translates to:

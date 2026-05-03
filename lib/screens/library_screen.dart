@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../models/server_config.dart';
 import '../providers/providers.dart';
 import '../services/subsonic_service.dart';
 import '../theme/app_theme.dart';
@@ -842,6 +843,7 @@ class _SettingsSheet extends StatelessWidget {
                             ],
                           ),
                         ),
+                        _buildSwitchServerButton(context),
                       ],
                     ),
                   ),
@@ -904,6 +906,111 @@ class _SettingsSheet extends StatelessWidget {
                 },
               ),
               const SizedBox(height: 32),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSwitchServerButton(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final l10n = AppLocalizations.of(context)!;
+
+    return FutureBuilder<List<ServerConfig>>(
+      future: authProvider.getSavedProfiles(),
+      builder: (context, snapshot) {
+        final profiles = snapshot.data ?? [];
+        if (profiles.length < 2) return const SizedBox.shrink();
+
+        return IconButton(
+          onPressed: () => _showSwitchServerDialog(context),
+          icon: Icon(
+            CupertinoIcons.arrow_right_arrow_left,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white
+                : Colors.black87,
+          ),
+          tooltip: l10n.switchServer,
+        );
+      },
+    );
+  }
+
+  void _showSwitchServerDialog(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final l10n = AppLocalizations.of(context)!;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(ctx).brightness == Brightness.dark
+              ? AppTheme.darkSurface
+              : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                width: 36,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Theme.of(ctx).brightness == Brightness.dark
+                      ? AppTheme.darkDivider
+                      : AppTheme.lightDivider,
+                  borderRadius: BorderRadius.circular(2.5),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                l10n.switchServer,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              FutureBuilder<List<ServerConfig>>(
+                future: authProvider.getSavedProfiles(),
+                builder: (context, snapshot) {
+                  final profiles = snapshot.data ?? [];
+                  final currentConfig = authProvider.config;
+                  final otherProfiles = profiles.where((p) =>
+                    p.serverUrl != currentConfig?.serverUrl ||
+                    p.username != currentConfig?.username,
+                  ).toList();
+
+                  return Column(
+                    children: otherProfiles.map((profile) {
+                      final label = profile.name?.isNotEmpty == true
+                          ? profile.name!
+                          : '${profile.username}@${Uri.tryParse(profile.serverUrl)?.host ?? profile.serverUrl}';
+                      return ListTile(
+                        leading: const Icon(CupertinoIcons.person_crop_circle),
+                        title: Text(label),
+                        subtitle: Text(
+                          profile.serverUrl,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        onTap: () async {
+                          Navigator.pop(ctx);
+                          final playerProvider =
+                              Provider.of<PlayerProvider>(context, listen: false);
+                          await playerProvider.stop();
+                          await authProvider.switchProfile(profile);
+                        },
+                      );
+                    }).toList(),
+                  );
+                },
+              ),
+              const SizedBox(height: 8),
             ],
           ),
         ),

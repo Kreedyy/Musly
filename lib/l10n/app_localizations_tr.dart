@@ -609,6 +609,12 @@ class AppLocalizationsTr extends AppLocalizations {
   String get switchProfile => 'Switch Profile';
 
   @override
+  String get switchServer => 'Switch Server';
+
+  @override
+  String get addProfile => 'Add Profile';
+
+  @override
   String switchProfileConfirmation(String profile) {
     return 'Connect to \"$profile\"?';
   }

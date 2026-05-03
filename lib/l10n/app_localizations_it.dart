@@ -613,6 +613,12 @@ class AppLocalizationsIt extends AppLocalizations {
   String get switchProfile => 'Cambia Profilo';
 
   @override
+  String get switchServer => 'Cambia Server';
+
+  @override
+  String get addProfile => 'Aggiungi Profilo';
+
+  @override
   String switchProfileConfirmation(String profile) {
     return 'Connetti a \"$profile\"?';
   }

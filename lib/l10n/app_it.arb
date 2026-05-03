@@ -635,6 +635,8 @@
   "noMusicFolders": "Nessuna cartella musicale trovata",
   "sectionSavedProfiles": "PROFILI SALVATI",
   "switchProfile": "Cambia Profilo",
+  "switchServer": "Cambia Server",
+  "addProfile": "Aggiungi Profilo",
   "switchProfileConfirmation": "Connetti a \"{profile}\"?",
   "sectionAccount": "ACCOUNT",
   "logoutConfirmation": "Sei sicuro di voler uscire? Questo cancellerà tutti i dati memorizzati nella cache.",

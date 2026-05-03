@@ -761,6 +761,8 @@
   "noMusicFolders": "No music folders found",
   "sectionSavedProfiles": "SAVED PROFILES",
   "switchProfile": "Switch Profile",
+  "switchServer": "Switch Server",
+  "addProfile": "Add Profile",
   "switchProfileConfirmation": "Connect to \"{profile}\"?",
   "@switchProfileConfirmation": {
     "placeholders": {
