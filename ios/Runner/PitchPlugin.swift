@@ -29,23 +29,14 @@ public class PitchPlugin: NSObject, FlutterPlugin {
 
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         switch call.method {
-        case "setPitch":
+        case "setPlaybackParameters":
             guard let args = call.arguments as? [String: Any],
-                  let pitch = args["pitch"] as? Double else {
-                result(FlutterError(code: "INVALID_ARGS", message: nil, details: nil))
+                  let pitch = args["pitch"] as? Double,
+                  let speed = args["speed"] as? Double else {
+                result(["success": false])
                 return
             }
-            setPitch(pitch)
-            result(["success": true])
-
-        case "setSpeed":
-            // Speed is handled by just_audio natively; we only store pitch here.
-            guard let args = call.arguments as? [String: Any],
-                  let pitch = args["pitch"] as? Double else {
-                result(["success": true])
-                return
-            }
-            setPitch(pitch)
+            setPlaybackParameters(speed: speed, pitch: pitch)
             result(["success": true])
 
         default:
@@ -53,16 +44,11 @@ public class PitchPlugin: NSObject, FlutterPlugin {
         }
     }
 
-    private func setPitch(_ pitch: Double) {
-        // Since AVPlayer doesn't expose pitch directly, we rely on the fact
-        // that just_audio uses AVAudioEngine internally on iOS 11+ when
-        // certain features are enabled. For a robust implementation, the
-        // app should use a custom AVAudioEngine-based player instead of
-        // trying to retrofit AVPlayer.
-        //
-        // As a pragmatic workaround, we store the requested pitch and log it.
-        // A full implementation would require replacing just_audio's player
-        // with a custom AVAudioEngine pipeline.
-        print("PitchPlugin: requested pitch \(pitch). AVPlayer pitch control requires AVAudioEngine integration.")
+    private func setPlaybackParameters(speed: Double, pitch: Double) {
+        // AVPlayer does not expose pitch control directly. A full implementation
+        // would require replacing just_audio with a custom AVAudioEngine pipeline
+        // containing an AVAudioUnitTimePitch node.
+        // For now we accept the native AVPlayer behaviour where pitch follows speed.
+        print("PitchPlugin: requested speed \(speed) pitch \(pitch). AVPlayer pitch preservation requires AVAudioEngine integration.")
     }
 }

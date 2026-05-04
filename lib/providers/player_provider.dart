@@ -781,14 +781,17 @@ class PlayerProvider extends ChangeNotifier {
 
   Future<void> setPlaybackSpeed(double speed) async {
     _playbackSpeed = speed.clamp(0.25, 4.0);
-    await _audioPlayer.setSpeed(_playbackSpeed);
 
-    if (_pitchCorrection) {
-      // Preserve original pitch regardless of speed (time-stretching).
-      await setPitch(1.0);
-    } else {
-      // Natural vinyl-style effect: pitch follows speed.
-      await setPitch(_playbackSpeed);
+    final targetPitch = _pitchCorrection ? 1.0 : _playbackSpeed;
+    _pitch = targetPitch.clamp(0.5, 2.0);
+
+    final success = await _audioHandler.setPlaybackParameters(
+      _playbackSpeed,
+      _pitch,
+    );
+    if (!success) {
+      // Fallback to just_audio native setSpeed when pitch plugin is unavailable.
+      await _audioPlayer.setSpeed(_playbackSpeed);
     }
 
     notifyListeners();
@@ -796,17 +799,31 @@ class PlayerProvider extends ChangeNotifier {
 
   Future<void> setPitch(double pitch) async {
     _pitch = pitch.clamp(0.5, 2.0);
-    await _audioHandler.setPitch(_pitch);
+
+    final success = await _audioHandler.setPlaybackParameters(
+      _playbackSpeed,
+      _pitch,
+    );
+    if (!success) {
+      await _audioPlayer.setSpeed(_playbackSpeed);
+    }
+
     notifyListeners();
   }
 
   Future<void> togglePitchCorrection() async {
     _pitchCorrection = !_pitchCorrection;
-    if (_pitchCorrection) {
-      await setPitch(1.0);
-    } else {
-      await setPitch(_playbackSpeed);
+    final targetPitch = _pitchCorrection ? 1.0 : _playbackSpeed;
+    _pitch = targetPitch.clamp(0.5, 2.0);
+
+    final success = await _audioHandler.setPlaybackParameters(
+      _playbackSpeed,
+      _pitch,
+    );
+    if (!success) {
+      await _audioPlayer.setSpeed(_playbackSpeed);
     }
+
     notifyListeners();
   }
 

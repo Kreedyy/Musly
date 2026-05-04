@@ -158,15 +158,19 @@ class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
 
   // ---------------------------------------------------------------------------
 
-  /// Propagates pitch changes to the native player via platform channel.
-  Future<void> setPitch(double pitch) async {
+  /// Propagates speed+pitch to the native player via platform channel.
+  /// Returns true if the native plugin succeeded.
+  Future<bool> setPlaybackParameters(double speed, double pitch) async {
     try {
-      await _pitchChannel.invokeMethod('setPitch', {
+      final result = await _pitchChannel.invokeMethod('setPlaybackParameters', {
+        'speed': speed,
         'pitch': pitch,
-        'speed': _player.speed,
       });
+      final success = (result?['success'] as bool?) ?? false;
+      return success;
     } catch (e) {
-      debugPrint('PitchPlugin setPitch error: $e');
+      debugPrint('PitchPlugin error: $e');
+      return false;
     }
   }
 
@@ -174,10 +178,6 @@ class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
   Future<void> customAction(String name, [Map<String, dynamic>? extras]) async {
     if (name == 'dispose') {
       await _player.dispose();
-    }
-    if (name == 'setPitch') {
-      final pitch = (extras?['pitch'] as num?)?.toDouble() ?? 1.0;
-      await setPitch(pitch);
     }
   }
 }
