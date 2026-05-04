@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import '../models/song.dart';
 import '../models/playlist.dart';
 import 'subsonic_service.dart';
@@ -55,6 +56,11 @@ class OfflineService {
 
   static const String _keyDownloadedSongs = 'offline_downloaded_songs';
   static const String _keyPendingScrobbles = 'pending_scrobbles';
+  static const String _keyParallelDownloads = 'parallel_downloads_count';
+  static const String _keyKeepScreenOn = 'offline_keep_screen_on';
+
+  static const int _defaultParallelDownloads = 3;
+  static const int _maxParallelDownloads = 5;
 
   Future<void> initialize() async {
     _prefs ??= await SharedPreferences.getInstance();
@@ -230,10 +236,32 @@ class OfflineService {
     onComplete?.call();
   }
 
+  /// Get the number of parallel downloads to use
+  int getParallelDownloadsCount() {
+    return _prefs?.getInt(_keyParallelDownloads) ?? _defaultParallelDownloads;
+  }
+
+  /// Set the number of parallel downloads (1 to _maxParallelDownloads)
+  Future<void> setParallelDownloadsCount(int count) async {
+    if (_prefs == null) await initialize();
+    final clampedCount = count.clamp(1, _maxParallelDownloads);
+    await _prefs?.setInt(_keyParallelDownloads, clampedCount);
+  }
+
+  Future<void> setKeepScreenOn(bool value) async {
+    if (_prefs == null) await initialize();
+    await _prefs?.setBool(_keyKeepScreenOn, value);
+  }
+
+  bool getKeepScreenOn() {
+    return _prefs?.getBool(_keyKeepScreenOn) ?? true;
+  }
+
   Future<void> startBackgroundDownload(
     List<Song> songs,
-    SubsonicService subsonicService,
-  ) async {
+    SubsonicService subsonicService, {
+    int? parallelCount,
+  }) async {
     if (_isBackgroundDownloadActive) {
       debugPrint('Background download already in progress');
       return;
@@ -241,6 +269,18 @@ class OfflineService {
 
     _isBackgroundDownloadActive = true;
     final alreadyDownloadedCount = getDownloadedCount();
+    final concurrentDownloads = parallelCount ?? getParallelDownloadsCount();
+    final keepScreenOn = getKeepScreenOn();
+
+    // Enable wake lock to prevent the screen from turning off during download
+    if (keepScreenOn && !kIsWeb) {
+      try {
+        await WakelockPlus.enable();
+        debugPrint('Wake lock enabled for library download');
+      } catch (e) {
+        debugPrint('Failed to enable wake lock: $e');
+      }
+    }
 
     downloadState.value = DownloadState(
       isDownloading: true,
@@ -252,37 +292,55 @@ class OfflineService {
     if (_offlineDir == null) await initialize();
 
     try {
-      for (int i = 0; i < songs.length; i++) {
+      final pendingSongs = songs.where((s) => !isSongDownloaded(s.id)).toList();
+      int completedCount = songs.length - pendingSongs.length;
+
+      // Process songs in batches using parallel downloads
+      for (int i = 0; i < pendingSongs.length; i += concurrentDownloads) {
         if (!_isBackgroundDownloadActive) {
           break;
         }
 
-        final song = songs[i];
+        // Get the next batch of songs
+        final batch = pendingSongs.skip(i).take(concurrentDownloads).toList();
 
-        if (isSongDownloaded(song.id)) {
+        // Download all songs in the batch concurrently
+        final downloadFutures = batch.map((song) async {
+          if (!_isBackgroundDownloadActive) return false;
+
+          final success = await downloadSong(song, subsonicService);
+          completedCount++;
+
+          final newDownloadedCount = getDownloadedCount();
           downloadState.value = downloadState.value.copyWith(
-            currentProgress: i + 1,
+            currentProgress: completedCount,
+            downloadedCount: newDownloadedCount,
           );
-          continue;
-        }
 
-        final success = await downloadSong(song, subsonicService);
+          if (!success) {
+            debugPrint('Failed to download song: ${song.title}');
+          }
+          return success;
+        });
 
-        final newDownloadedCount = getDownloadedCount();
-        downloadState.value = downloadState.value.copyWith(
-          currentProgress: i + 1,
-          downloadedCount: newDownloadedCount,
-        );
-
-        if (!success) {
-          debugPrint('Failed to download song: ${song.title}');
-        }
+        // Wait for all downloads in the batch to complete
+        await Future.wait(downloadFutures);
       }
     } catch (e) {
       debugPrint('Error during background download: $e');
     } finally {
       _isBackgroundDownloadActive = false;
       downloadState.value = downloadState.value.copyWith(isDownloading: false);
+
+      // Always disable wake lock when download finishes or fails
+      if (!kIsWeb) {
+        try {
+          await WakelockPlus.disable();
+          debugPrint('Wake lock disabled after download');
+        } catch (e) {
+          debugPrint('Failed to disable wake lock: $e');
+        }
+      }
     }
   }
 

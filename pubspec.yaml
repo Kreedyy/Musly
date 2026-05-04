@@ -11,7 +11,7 @@ publish_to: 'none'
 # Read more about Android versioning at https://developer.android.com/studio/publish/versioning
 # In iOS, build-name is used as CFBundleShortVersionString while build-number is used as CFBundleVersion.
 # In Windows, build-name is used as the major, minor, and patch parts
-version: 1.0.9+1
+version: 1.0.11+1
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -36,7 +36,7 @@ dependencies:
   just_audio_media_kit: ^2.1.0  # Linux (and macOS) audio backend via libmpv
   media_kit_libs_linux: ^1.2.1  # Native libmpv binaries for Linux
   audio_session: ^0.1.25
-  audio_service: ^0.18.12
+  audio_service: ^0.18.18
   
   cached_network_image: ^3.3.1
   flutter_cache_manager: ^3.3.1
@@ -61,7 +61,7 @@ dependencies:
   permission_handler: ^12.0.1
   audio_metadata_reader: ^1.4.2
   
-  device_info_plus: ^10.1.2
+  safe_device: ^1.3.10
   smtc_windows: ^1.1.0
   windows_taskbar: ^1.1.2
   local_notifier: ^0.1.6
@@ -76,6 +76,8 @@ dependencies:
   countly_flutter: ^26.1.0
   youtube_explode_dart: ^3.0.5
   http: ^1.6.0
+  wakelock_plus: ^1.4.0
+  live_activities: ^2.4.9
 
 dependency_overrides:
   ffi: ^2.1.0

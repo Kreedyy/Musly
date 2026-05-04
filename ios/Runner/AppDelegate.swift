@@ -29,12 +29,13 @@ import AVFoundation
       if airPlayRegistrar != nil {
         registerAirPlayButtonFactory(with: airPlayRegistrar!)
       }
-      
-      // Lyrics Plugin for lock screen lyrics
-      let lyricsPluginRegistrar = registrar(forPlugin: "iOSLyricsPlugin")
-      if lyricsPluginRegistrar != nil {
-        iOSLyricsPlugin.register(with: lyricsPluginRegistrar!)
+
+      // Pitch control plugin
+      let pitchRegistrar = registrar(forPlugin: "PitchPlugin")
+      if pitchRegistrar != nil {
+        PitchPlugin.register(with: pitchRegistrar!)
       }
+
     }
     
     // Configure audio session for background playback

@@ -44,7 +44,7 @@ class AuthProvider extends ChangeNotifier {
         return;
       }
 
-      _subsonicService.configure(config);
+      await _subsonicService.configure(config);
       await _verifyConnection();
     } else {
       _state = AuthState.unauthenticated;
@@ -113,7 +113,7 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> retryConnection() async {
     if (_config == null) return;
-    _subsonicService.configure(_config!);
+    await _subsonicService.configure(_config!);
     await _verifyConnection();
   }
 
@@ -192,7 +192,7 @@ class AuthProvider extends ChangeNotifier {
       userId: jellyfinUserId,
     );
 
-    _subsonicService.configure(config);
+    await _subsonicService.configure(config);
 
     try {
       final pingResult = await _subsonicService.pingWithError();
@@ -300,7 +300,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> switchProfile(ServerConfig profile) async {
     _config = profile;
     await _storageService.saveServerConfig(profile);
-    _subsonicService.configure(profile);
+    await _subsonicService.configure(profile);
     await _verifyConnection();
   }
 
@@ -308,7 +308,7 @@ class AuthProvider extends ChangeNotifier {
     if (_config == null) return;
     final updated = _config!.copyWith(selectedMusicFolderIds: ids);
     _config = updated;
-    _subsonicService.configure(updated);
+    await _subsonicService.configure(updated);
     await _storageService.saveServerConfig(updated);
     notifyListeners();
   }

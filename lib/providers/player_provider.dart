@@ -72,7 +72,7 @@ class PlayerProvider extends ChangeNotifier {
 
   bool _hasPlayedOnce = false;
 
-  bool _reactivatingSession = false;
+  final bool _reactivatingSession = false;
 
   Timer? _sleepTimer;
   DateTime? _sleepTimerEnd;
@@ -83,6 +83,8 @@ class PlayerProvider extends ChangeNotifier {
   Timer? _sleepTimerFadePeriodicTimer;
 
   double _playbackSpeed = 1.0;
+  double _pitch = 1.0;
+  bool _pitchCorrection = true;
 
   PlayerProvider(
     this._subsonicService,
@@ -609,8 +611,9 @@ class PlayerProvider extends ChangeNotifier {
     }
 
     final coverArtId = song.coverArt!;
-    
-    for (final sz in [400, 300, 200, 150, 100]) {
+
+    // Search for cached artwork from highest to lowest quality for iOS Now Playing
+    for (final sz in [1200, 800, 600, 400, 300, 200]) {
       for (final key in ['${coverArtId}_natural_$sz', '${coverArtId}_$sz']) {
         try {
           final fileInfo = await DefaultCacheManager().getFileFromCache(key);
@@ -624,7 +627,8 @@ class PlayerProvider extends ChangeNotifier {
         } catch (_) {}
       }
     }
-    final serverUrl = _subsonicService.getCoverArtUrl(coverArtId, size: 600);
+    // Request high quality for iOS Now Playing bar / Control Center (1200px)
+    final serverUrl = _subsonicService.getCoverArtUrl(coverArtId, size: 1200);
 
     if (!_offlineService.isOfflineMode) {
       _resolvedArtworkUrl = serverUrl;
@@ -771,9 +775,55 @@ class PlayerProvider extends ChangeNotifier {
 
   double get playbackSpeed => _playbackSpeed;
 
+  double get pitch => _pitch;
+
+  bool get pitchCorrection => _pitchCorrection;
+
   Future<void> setPlaybackSpeed(double speed) async {
     _playbackSpeed = speed.clamp(0.25, 4.0);
-    await _audioPlayer.setSpeed(_playbackSpeed);
+
+    final targetPitch = _pitchCorrection ? 1.0 : _playbackSpeed;
+    _pitch = targetPitch.clamp(0.5, 2.0);
+
+    final success = await _audioHandler.setPlaybackParameters(
+      _playbackSpeed,
+      _pitch,
+    );
+    if (!success) {
+      // Fallback to just_audio native setSpeed when pitch plugin is unavailable.
+      await _audioPlayer.setSpeed(_playbackSpeed);
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> setPitch(double pitch) async {
+    _pitch = pitch.clamp(0.5, 2.0);
+
+    final success = await _audioHandler.setPlaybackParameters(
+      _playbackSpeed,
+      _pitch,
+    );
+    if (!success) {
+      await _audioPlayer.setSpeed(_playbackSpeed);
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> togglePitchCorrection() async {
+    _pitchCorrection = !_pitchCorrection;
+    final targetPitch = _pitchCorrection ? 1.0 : _playbackSpeed;
+    _pitch = targetPitch.clamp(0.5, 2.0);
+
+    final success = await _audioHandler.setPlaybackParameters(
+      _playbackSpeed,
+      _pitch,
+    );
+    if (!success) {
+      await _audioPlayer.setSpeed(_playbackSpeed);
+    }
+
     notifyListeners();
   }
 
@@ -1133,7 +1183,7 @@ class PlayerProvider extends ChangeNotifier {
             ? await _subsonicService.getYoutubeAudioSource(song)
             : null;
 
-        Future<void> _setSource() async {
+        Future<void> setSource() async {
           if (youtubeSource != null) {
             await _audioPlayer.setAudioSource(youtubeSource);
             return;
@@ -1153,7 +1203,7 @@ class PlayerProvider extends ChangeNotifier {
         }
 
         try {
-          await _setSource();
+          await setSource();
         } catch (e) {
           // Android 16 / Media3 first-play workaround — not applicable to
           // YouTube StreamAudioSource (proxy state must not be reset).
@@ -1162,7 +1212,7 @@ class PlayerProvider extends ChangeNotifier {
               'First playback failed (Android 16 Media3 issue), retrying: $e',
             );
             await Future.delayed(const Duration(milliseconds: 100));
-            await _setSource();
+            await setSource();
             _hasPlayedOnce = true;
           } else {
             rethrow;
@@ -1761,7 +1811,22 @@ class PlayerProvider extends ChangeNotifier {
       try {
         final session = await AudioSession.instance;
         await session.setActive(true);
-      } catch (_) {}
+
+        // Wait a bit for the audio session to stabilize
+        await Future.delayed(const Duration(milliseconds: 100));
+
+        // If there's a current song and audio is not playing, resume it
+        // This handles the case where iOS pauses audio when dismissing the player
+        if (_currentSong != null && !_audioPlayer.playing) {
+          debugPrint('[Player] iOS: Resuming playback after audio session reactivation (song: ${_currentSong!.title})');
+          await _audioPlayer.play();
+          _isPlaying = true;
+          notifyListeners();
+          _updateAllServices();
+        }
+      } catch (e) {
+        debugPrint('[Player] iOS: Error reactivating audio session: $e');
+      }
     }
   }
 

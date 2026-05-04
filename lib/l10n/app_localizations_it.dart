@@ -361,6 +361,25 @@ class AppLocalizationsIt extends AppLocalizations {
   String get showStarRatingsSubtitle => 'Vota brani e visualizza valutazioni';
 
   @override
+  String get showMiniPlayerHeart => 'Show Heart Button';
+
+  @override
+  String get showMiniPlayerHeartSubtitle => 'Add to favorites from mini player';
+
+  @override
+  String get showMiniPlayerRepeat => 'Show Repeat Button';
+
+  @override
+  String get showMiniPlayerRepeatSubtitle =>
+      'Toggle repeat mode from mini player';
+
+  @override
+  String get showMiniPlayerShuffle => 'Show Shuffle Button';
+
+  @override
+  String get showMiniPlayerShuffleSubtitle => 'Toggle shuffle from mini player';
+
+  @override
   String get enableRecommendations => 'Attiva Raccomandazioni';
 
   @override
@@ -431,6 +450,25 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get noLikedAlbums => 'No liked albums yet';
+
+  @override
+  String get localMusicLibrary => 'Local Music Library';
+
+  @override
+  String get mergeLocalLibrary => 'Merge with Server Library';
+
+  @override
+  String get mergeLocalLibrarySubtitle =>
+      'Show local music alongside your server library';
+
+  @override
+  String get localMusicStats => 'Local Music Files';
+
+  @override
+  String get addMusicFolder => 'Add Music Folder';
+
+  @override
+  String get rescanLocalMusic => 'Rescan Local Music';
 
   @override
   String get radioStations => 'Stazioni radio';
@@ -693,6 +731,32 @@ class AppLocalizationsIt extends AppLocalizations {
   String downloadLibraryConfirm(int count) {
     return 'Questo scaricherà  $count brani sul tuo dispositivo. Questo potrebbe richiedere un po\' di tempo e utilizzare uno spazio di archiviazione significativo.\n\nContinuare?';
   }
+
+  @override
+  String get keepScreenOnDuringDownload => 'Keep Screen On';
+
+  @override
+  String get keepScreenOnDuringDownloadSubtitle =>
+      'Prevents download from failing when device locks';
+
+  @override
+  String get parallelDownloads => 'Parallel Downloads';
+
+  @override
+  String get parallelDownloadsSubtitle =>
+      'Download multiple songs simultaneously';
+
+  @override
+  String get downloadSingular => 'download';
+
+  @override
+  String get downloadPlural => 'downloads';
+
+  @override
+  String get slowerButStable => 'Slower but more stable';
+
+  @override
+  String get fasterButMoreData => 'Faster but uses more data';
 
   @override
   String get libraryDownloadStarted => 'Download della libreria avviato';

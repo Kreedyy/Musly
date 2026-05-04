@@ -205,7 +205,10 @@ class AlbumArtwork extends StatelessWidget {
           fadeOutDuration: Duration.zero,
           useOldImageOnUrlChange: true,
           placeholder: (ctx, url) => _buildPlaceholder(isDark),
-          errorWidget: (ctx, err, stack) => _buildPlaceholder(isDark),
+          errorWidget: (ctx, err, stack) {
+            debugPrint('AlbumArtwork error (natural): $err');
+            return _buildNetworkImageFallback(imageUrl, isDark, BoxFit.contain);
+          },
         );
       },
     );
@@ -247,8 +250,22 @@ class AlbumArtwork extends StatelessWidget {
           fadeOutDuration: Duration.zero,
           useOldImageOnUrlChange: true,
           placeholder: (ctx, url) => _buildPlaceholder(isDark),
-          errorWidget: (ctx, err, stack) => _buildPlaceholder(isDark),
+          errorWidget: (ctx, err, stack) {
+            debugPrint('AlbumArtwork error: $err');
+            return _buildNetworkImageFallback(imageUrl, isDark, BoxFit.cover);
+          },
         );
+      },
+    );
+  }
+
+  Widget _buildNetworkImageFallback(String url, bool isDark, BoxFit fit) {
+    return Image.network(
+      url,
+      fit: fit,
+      errorBuilder: (ctx, err, stack) {
+        debugPrint('Network image fallback error: $err');
+        return _buildPlaceholder(isDark);
       },
     );
   }

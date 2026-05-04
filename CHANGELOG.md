@@ -5,6 +5,72 @@ All notable changes to Musly will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.11] - 2026-05-04
+
+### Added
+- **Pitch Control & Speed Adjustment** ([#145](https://github.com/dddevid/Musly/issues/145))
+  - Independent pitch slider (0.5× – 2.0×) in the speed bottom sheet
+  - "Preserve pitch" toggle: keeps original pitch when changing playback speed (time-stretching)
+  - When disabled, pitch follows speed like a vinyl record
+  - Native ExoPlayer bridge on Android via reflection for real pitch control
+  - iOS stub ready for future AVAudioEngine integration
+- **iPhone SE / Small Screen Compatibility**
+  - Responsive layouts for 375×667 pt screens (iPhone SE, iPhone 8)
+  - Reduced padding, font sizes, and control sizes across Now Playing, Login, Album, and Mini Player
+  - `ScreenHelper` utility for adaptive sizing based on screen width
+
+### Fixed
+- **Listening History Blank** ([#146](https://github.com/dddevid/Musly/issues/146))
+  - History screen was empty when recommendations were disabled
+  - `trackSongPlay`, `trackSkip`, `trackSongRating`, and `trackStarred` now always record listening data regardless of recommendation toggle
+- **Emulator Detection (Pixel 9+)**
+  - Replaced `device_info_plus` string-matching with `safe_device: ^1.3.10`
+  - Pixel 9+ devices were falsely blocked as emulators due to "google"/"generic" strings in device info
+- **Speed/Pitch Race Condition**
+  - Fixed bug where changing playback speed reset pitch to 1.0
+  - Unified `setPlaybackParameters(speed, pitch)` call applied atomically to ExoPlayer
+  - Eliminates race between `just_audio.setSpeed()` and custom pitch reflection
+
+### Changed
+- **CI/CD**: Android release builds now produce a universal APK instead of split-per-ABI
+  - Fixes issue where installing a new APK over an old one required uninstalling first
+
+## [1.0.10] - 2026-05-04
+
+### Added
+- **Live Activities / Lyrics on Lock Screen** (iOS 16.1+ & Android)
+  - Replaced custom `iOSLyricsPlugin` with `live_activities: ^2.4.9` package
+  - iOS: Native Live Activity with Dynamic Island showing current lyrics line
+  - Android: Live Activity-style notification via RemoteViews
+  - Unified API for both platforms in `LockScreenLyricsService`
+- **Multiple Server Profiles**: Switch between different Subsonic/Navidrome servers
+- **Local Music Libraries**: Play music files stored on device with auto-scanning
+- **Parallel Downloads**: Download multiple songs simultaneously in library
+- **Heart/Repeat/Shuffle in Mini Player**: Quick action buttons in collapsed player
+- **Android Auto Improvements**: Enhanced UI, animations, and Navidrome content support
+- **SMTC Windows Lyrics & Bluetooth Lyrics**: Show lyrics in Windows notification and Bluetooth devices
+- **Emulator Detection**: Block app on emulators for mobile builds
+- **Arabic & Dutch Language Support**
+
+### Changed
+- **iOS Minimum Version**: Bumped to 16.1 for ActivityKit support
+- **audio_service**: Updated to ^0.18.18 for better iOS Now Playing artwork
+- **Donation Popup Timing**: Reduced from 25 min to 8 min usage
+- **Playing Next Section**: Improved styling and tap-to-collapse behavior
+- **Library Page Reorganization**: Better layout and filtering
+
+### Fixed
+- **iOS Build Error**: "Cannot find iOSLyricsPlugin" resolved by updating deployment target
+- **iOS Audio Stopping**: Song no longer stops when closing fullscreen player
+- **iOS Now Playing Artwork**: High-quality 1200px artwork from server
+- **Self-Signed Certificates**: Eliminated UI freeze during TLS setup (async file reads)
+- **Image Decompression Crash**: Fixed on Android low-memory devices
+- **Background Download**: GrapheneOS compatibility fixes
+- **Android Auto Artwork**: Proper loading and display
+- **Logout Null Check**: Error when logging out from settings
+- **Support Dialog**: Usability fixes on small screens
+- **Album Screen Navigation**: Fixed from now-playing flow above artist page
+
 ## [1.0.9] - 2026-05-02
 
 ### Added
@@ -267,7 +333,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.1.0] - 2026-01-15
+## [1.0.1] - 2026-01-15
 
 ### Added
 

@@ -800,6 +800,42 @@ abstract class AppLocalizations {
   /// **'Rate songs and view ratings'**
   String get showStarRatingsSubtitle;
 
+  /// Show Heart button in mini player toggle label
+  ///
+  /// In en, this message translates to:
+  /// **'Show Heart Button'**
+  String get showMiniPlayerHeart;
+
+  /// Show Heart button in mini player toggle subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'Add to favorites from mini player'**
+  String get showMiniPlayerHeartSubtitle;
+
+  /// Show Repeat button in mini player toggle label
+  ///
+  /// In en, this message translates to:
+  /// **'Show Repeat Button'**
+  String get showMiniPlayerRepeat;
+
+  /// Show Repeat button in mini player toggle subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle repeat mode from mini player'**
+  String get showMiniPlayerRepeatSubtitle;
+
+  /// Show Shuffle button in mini player toggle label
+  ///
+  /// In en, this message translates to:
+  /// **'Show Shuffle Button'**
+  String get showMiniPlayerShuffle;
+
+  /// Show Shuffle button in mini player toggle subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle shuffle from mini player'**
+  String get showMiniPlayerShuffleSubtitle;
+
   /// Enable Recommendations toggle label
   ///
   /// In en, this message translates to:
@@ -931,6 +967,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No liked albums yet'**
   String get noLikedAlbums;
+
+  /// No description provided for @localMusicLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'Local Music Library'**
+  String get localMusicLibrary;
+
+  /// No description provided for @mergeLocalLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge with Server Library'**
+  String get mergeLocalLibrary;
+
+  /// No description provided for @mergeLocalLibrarySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show local music alongside your server library'**
+  String get mergeLocalLibrarySubtitle;
+
+  /// No description provided for @localMusicStats.
+  ///
+  /// In en, this message translates to:
+  /// **'Local Music Files'**
+  String get localMusicStats;
+
+  /// No description provided for @addMusicFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Music Folder'**
+  String get addMusicFolder;
+
+  /// No description provided for @rescanLocalMusic.
+  ///
+  /// In en, this message translates to:
+  /// **'Rescan Local Music'**
+  String get rescanLocalMusic;
 
   /// No description provided for @radioStations.
   ///
@@ -1405,6 +1477,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This will download {count} songs to your device. This may take a while and use significant storage space.\n\nContinue?'**
   String downloadLibraryConfirm(int count);
+
+  /// Toggle to keep screen on during library download
+  ///
+  /// In en, this message translates to:
+  /// **'Keep Screen On'**
+  String get keepScreenOnDuringDownload;
+
+  /// Subtitle explaining why to keep screen on during download
+  ///
+  /// In en, this message translates to:
+  /// **'Prevents download from failing when device locks'**
+  String get keepScreenOnDuringDownloadSubtitle;
+
+  /// No description provided for @parallelDownloads.
+  ///
+  /// In en, this message translates to:
+  /// **'Parallel Downloads'**
+  String get parallelDownloads;
+
+  /// No description provided for @parallelDownloadsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Download multiple songs simultaneously'**
+  String get parallelDownloadsSubtitle;
+
+  /// No description provided for @downloadSingular.
+  ///
+  /// In en, this message translates to:
+  /// **'download'**
+  String get downloadSingular;
+
+  /// No description provided for @downloadPlural.
+  ///
+  /// In en, this message translates to:
+  /// **'downloads'**
+  String get downloadPlural;
+
+  /// No description provided for @slowerButStable.
+  ///
+  /// In en, this message translates to:
+  /// **'Slower but more stable'**
+  String get slowerButStable;
+
+  /// No description provided for @fasterButMoreData.
+  ///
+  /// In en, this message translates to:
+  /// **'Faster but uses more data'**
+  String get fasterButMoreData;
 
   /// No description provided for @libraryDownloadStarted.
   ///

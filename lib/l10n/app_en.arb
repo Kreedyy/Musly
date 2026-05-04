@@ -567,6 +567,36 @@
     "description": "Show Star Ratings toggle subtitle"
   },
 
+  "showMiniPlayerHeart": "Show Heart Button",
+  "@showMiniPlayerHeart": {
+    "description": "Show Heart button in mini player toggle label"
+  },
+
+  "showMiniPlayerHeartSubtitle": "Add to favorites from mini player",
+  "@showMiniPlayerHeartSubtitle": {
+    "description": "Show Heart button in mini player toggle subtitle"
+  },
+
+  "showMiniPlayerRepeat": "Show Repeat Button",
+  "@showMiniPlayerRepeat": {
+    "description": "Show Repeat button in mini player toggle label"
+  },
+
+  "showMiniPlayerRepeatSubtitle": "Toggle repeat mode from mini player",
+  "@showMiniPlayerRepeatSubtitle": {
+    "description": "Show Repeat button in mini player toggle subtitle"
+  },
+
+  "showMiniPlayerShuffle": "Show Shuffle Button",
+  "@showMiniPlayerShuffle": {
+    "description": "Show Shuffle button in mini player toggle label"
+  },
+
+  "showMiniPlayerShuffleSubtitle": "Toggle shuffle from mini player",
+  "@showMiniPlayerShuffleSubtitle": {
+    "description": "Show Shuffle button in mini player toggle subtitle"
+  },
+
   "enableRecommendations": "Enable Recommendations",
   "@enableRecommendations": {
     "description": "Enable Recommendations toggle label"
@@ -647,6 +677,12 @@
   "likedSongs": "Liked Songs",
   "likedAlbums": "Liked Albums",
   "noLikedAlbums": "No liked albums yet",
+  "localMusicLibrary": "Local Music Library",
+  "mergeLocalLibrary": "Merge with Server Library",
+  "mergeLocalLibrarySubtitle": "Show local music alongside your server library",
+  "localMusicStats": "Local Music Files",
+  "addMusicFolder": "Add Music Folder",
+  "rescanLocalMusic": "Rescan Local Music",
   "radioStations": "Radio Stations",
   "playlist": "Playlist",
   "internetRadio": "Internet Radio",
@@ -816,6 +852,20 @@
           }
       }
   },
+  "keepScreenOnDuringDownload": "Keep Screen On",
+  "@keepScreenOnDuringDownload": {
+      "description": "Toggle to keep screen on during library download"
+  },
+  "keepScreenOnDuringDownloadSubtitle": "Prevents download from failing when device locks",
+  "@keepScreenOnDuringDownloadSubtitle": {
+      "description": "Subtitle explaining why to keep screen on during download"
+  },
+  "parallelDownloads": "Parallel Downloads",
+  "parallelDownloadsSubtitle": "Download multiple songs simultaneously",
+  "downloadSingular": "download",
+  "downloadPlural": "downloads",
+  "slowerButStable": "Slower but more stable",
+  "fasterButMoreData": "Faster but uses more data",
   "libraryDownloadStarted": "Library download started",
   "deleteDownloads": "Delete All Downloads",
   "downloadsDeleted": "All downloads deleted",

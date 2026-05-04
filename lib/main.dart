@@ -3,9 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
-import 'package:audio_service/audio_service.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:just_audio_media_kit/just_audio_media_kit.dart';
+import 'package:safe_device/safe_device.dart';
 
 import 'l10n/app_localizations.dart';
 import 'models/server_config.dart';
@@ -23,7 +23,6 @@ import 'theme/theme.dart';
 import 'utils/image_cache.dart';
 
 // Global instance for analytics (to be shown after auth)
-AnalyticsService? _analyticsServiceInstance;
 
 /// Shows the privacy policy dialog on first launch
 Future<void> _showPrivacyPolicyIfNeeded() async {
@@ -48,8 +47,88 @@ Future<void> _showPrivacyPolicyIfNeeded() async {
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+/// Checks if the app is running on an emulator/simulator
+Future<bool> _isRunningOnEmulator() async {
+  if (kIsWeb) return false;
+  if (!Platform.isAndroid && !Platform.isIOS) return false;
+
+  return !(await SafeDevice.isRealDevice);
+}
+
+/// Widget shown when app is running on emulator
+class _EmulatorWarningScreen extends StatelessWidget {
+  const _EmulatorWarningScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.block_rounded,
+                  size: 80,
+                  color: Colors.red,
+                ),
+                const SizedBox(height: 32),
+                const Text(
+                  'Emulator Detected',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'This app cannot run on an emulator.\nPlease use a physical device.',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey,
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 48),
+                FilledButton.icon(
+                  onPressed: () {
+                    // Exit the app
+                    exit(0);
+                  },
+                  icon: const Icon(Icons.exit_to_app),
+                  label: const Text('Exit App'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(200, 50),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Check if running on emulator (mobile only)
+  if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+    final isEmulator = await _isRunningOnEmulator();
+    if (isEmulator) {
+      // Show emulator warning and don't load the actual app
+      runApp(const _EmulatorWarningScreen());
+      return;
+    }
+  }
 
   JustAudioMediaKit.ensureInitialized(linux: true, windows: false);
 
@@ -116,8 +195,7 @@ void main() async {
     debugPrint('Failed to initialize analytics: $e');
   });
 
-  // Store reference to show support dialog after auth
-  _analyticsServiceInstance = analyticsService;
+  // Analytics service is initialized and used via AnalyticsNavigatorObserver
 
   try {
     await PlayerUiSettingsService().initialize();
@@ -162,13 +240,7 @@ void main() async {
     child: const MuslyApp(),
   );
 
-  // AudioServiceWidget is only needed on iOS where AudioService.init() was
-  // called.  On Android/desktop wrapping with it would break the app.
-  runApp(
-    (!kIsWeb && Platform.isIOS)
-        ? AudioServiceWidget(child: appWithProviders)
-        : appWithProviders,
-  );
+  runApp(appWithProviders);
 }
 
 class MuslyApp extends StatelessWidget {

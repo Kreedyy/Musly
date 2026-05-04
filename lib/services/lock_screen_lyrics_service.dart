@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:live_activities/live_activities.dart';
 
 import 'lyrics_manager.dart';
 import 'windows_system_service.dart';
@@ -13,20 +14,21 @@ class LockScreenLyricsService {
   static const _platform = MethodChannel('com.devid.musly/lyrics');
   static const _eventChannel = EventChannel('com.devid.musly/lyrics_updates');
 
+  final LiveActivities _liveActivities = LiveActivities();
+  String? _activityId;
+
   LyricsManager? _currentLyrics;
   StreamSubscription<Duration>? _positionSubscription;
   String? _lastSentLine;
   Timer? _updateTimer;
+  StreamSubscription? _eventSubscription;
   final WindowsSystemService _windowsService = WindowsSystemService();
 
   // Throttling configuration
   static const _updateInterval = Duration(milliseconds: 500);
 
-  /// Whether Live Activities/iOS lock screen lyrics are supported
-  bool get supportsLiveActivities => !kIsWeb && Platform.isIOS;
-
-  /// Whether Android media notification lyrics are supported  
-  bool get supportsAndroidNotification => !kIsWeb && Platform.isAndroid;
+  /// Whether Live Activities (iOS 16.1+) or Android RemoteViews are supported
+  bool get supportsLiveActivities => !kIsWeb && (Platform.isIOS || Platform.isAndroid);
 
   /// Whether Windows notification lyrics are supported
   bool get supportsWindowsNotification => !kIsWeb && Platform.isWindows;
@@ -41,9 +43,19 @@ class LockScreenLyricsService {
     debugPrint('[Lyrics] Initializing lock screen lyrics service...');
     debugPrint('[Lyrics] Platform: ${Platform.operatingSystem}');
     debugPrint('[Lyrics] Live Activities supported: $supportsLiveActivities');
-    debugPrint('[Lyrics] Android notification supported: $supportsAndroidNotification');
+    debugPrint('[Lyrics] Windows notification supported: $supportsWindowsNotification');
 
-    _eventChannel.receiveBroadcastStream().listen(
+    // Initialize live_activities for iOS and Android
+    if (supportsLiveActivities) {
+      try {
+        await _liveActivities.init(appGroupId: 'group.com.dddevid.musly');
+        debugPrint('[Lyrics] LiveActivities initialized');
+      } catch (e) {
+        debugPrint('[Lyrics] Failed to initialize LiveActivities: $e');
+      }
+    }
+
+    _eventSubscription = _eventChannel.receiveBroadcastStream().listen(
       (dynamic event) {
         debugPrint('[Lyrics] Native event: $event');
       },
@@ -51,14 +63,6 @@ class LockScreenLyricsService {
         debugPrint('[Lyrics] Native error: $error');
       },
     );
-
-    // Initialize native side
-    try {
-      final result = await _platform.invokeMethod('initialize');
-      debugPrint('[Lyrics] Native init result: $result');
-    } catch (e) {
-      debugPrint('[Lyrics] Failed to initialize native lyrics: $e');
-    }
   }
 
   /// Load lyrics for the current song
@@ -72,15 +76,21 @@ class LockScreenLyricsService {
     _currentLyrics = LyricsManager.parse(lrcContent);
     _lastSentLine = null;
 
-    // Notify native side that lyrics are available
-    if (_currentLyrics!.hasLyrics) {
+    // Create Live Activity when lyrics are available (iOS/Android)
+    if (supportsLiveActivities && _currentLyrics!.hasLyrics) {
       try {
-        await _platform.invokeMethod('lyricsAvailable', {
-          'hasLyrics': true,
-          'lineCount': _currentLyrics!.lineCount,
-        });
+        final songId = 'lyrics_${DateTime.now().millisecondsSinceEpoch}';
+        _activityId = await _liveActivities.createActivity(
+          songId,
+          {
+            'currentLine': '',
+            'songTitle': '',
+            'artist': '',
+          },
+        );
+        debugPrint('[Lyrics] Live Activity created: $_activityId');
       } catch (e) {
-        debugPrint('Failed to notify lyrics available: $e');
+        debugPrint('[Lyrics] Failed to create Live Activity: $e');
       }
     }
   }
@@ -92,16 +102,20 @@ class LockScreenLyricsService {
     _updateTimer?.cancel();
     _updateTimer = null;
 
+    // End Live Activity (iOS/Android)
+    if (supportsLiveActivities && _activityId != null) {
+      try {
+        await _liveActivities.endActivity(_activityId!);
+        _activityId = null;
+        debugPrint('[Lyrics] Live Activity ended');
+      } catch (e) {
+        debugPrint('[Lyrics] Failed to end Live Activity: $e');
+      }
+    }
+
     // Clear Windows notification
     if (supportsWindowsNotification) {
       await _windowsService.clearLyrics();
-      return;
-    }
-
-    try {
-      await _platform.invokeMethod('clearLyrics');
-    } catch (e) {
-      debugPrint('Failed to clear lyrics: $e');
     }
   }
 
@@ -162,21 +176,22 @@ class LockScreenLyricsService {
     if (line == _lastSentLine) return;
     _lastSentLine = line;
 
-    // Update Windows notification lyrics
-    if (supportsWindowsNotification) {
-      await _windowsService.updateLyrics(line);
+    // Update Live Activity (iOS/Android)
+    if (supportsLiveActivities && _activityId != null) {
+      try {
+        await _liveActivities.updateActivity(_activityId!, {
+          'currentLine': line,
+        });
+        debugPrint('[Lyrics] Live Activity updated: "$line"');
+      } catch (e) {
+        debugPrint('[Lyrics] Failed to update Live Activity: $e');
+      }
       return;
     }
 
-    debugPrint('[Lyrics] Sending to native: "$line"');
-    try {
-      final result = await _platform.invokeMethod('updateLyrics', {
-        'currentLine': line,
-        'timestamp': DateTime.now().millisecondsSinceEpoch,
-      });
-      debugPrint('[Lyrics] Native update result: $result');
-    } catch (e) {
-      debugPrint('[Lyrics] Failed to update lock screen lyrics: $e');
+    // Update Windows notification lyrics
+    if (supportsWindowsNotification) {
+      await _windowsService.updateLyrics(line);
     }
   }
 
@@ -190,20 +205,24 @@ class LockScreenLyricsService {
 
     debugPrint('[Lyrics] Updating song info: $title - $artist');
 
+    // Update Live Activity with song info (iOS/Android)
+    if (supportsLiveActivities && _activityId != null) {
+      try {
+        await _liveActivities.updateActivity(_activityId!, {
+          'songTitle': title,
+          'artist': artist,
+          'artworkUrl': artworkUrl ?? '',
+        });
+      } catch (e) {
+        debugPrint('[Lyrics] Failed to update song info in Live Activity: $e');
+      }
+      return;
+    }
+
     // Update Windows service with current song info
     if (supportsWindowsNotification) {
       // We don't have Song object here, so just pass basic info
       // The song info will be updated when loadLyrics is called
-    }
-
-    try {
-      await _platform.invokeMethod('updateSongInfo', {
-        'title': title,
-        'artist': artist,
-        'artworkUrl': artworkUrl,
-      });
-    } catch (e) {
-      debugPrint('[Lyrics] Failed to update song info: $e');
     }
   }
 
@@ -260,6 +279,8 @@ class LockScreenLyricsService {
 
   /// Dispose the service
   void dispose() {
+    _eventSubscription?.cancel();
+    _eventSubscription = null;
     stopSync();
     _clearLyrics();
   }

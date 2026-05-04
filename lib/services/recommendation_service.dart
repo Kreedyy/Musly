@@ -84,8 +84,6 @@ class RecommendationService extends ChangeNotifier {
     int durationPlayed = 0,
     bool completed = false,
   }) async {
-    if (!_enabled) return;
-
     final songId = song.id;
     final hour = DateTime.now().hour;
 
@@ -118,20 +116,23 @@ class RecommendationService extends ChangeNotifier {
       _recentlyPlayed = _recentlyPlayed.take(500).toList();
     }
 
-    if (song.artist != null) {
-      final w = completed ? 1.5 : 0.8;
-      _artistAffinity[song.artist!] = (_artistAffinity[song.artist!] ?? 0) + w;
-    }
+    // Recommendation-specific affinity data is only updated when enabled
+    if (_enabled) {
+      if (song.artist != null) {
+        final w = completed ? 1.5 : 0.8;
+        _artistAffinity[song.artist!] = (_artistAffinity[song.artist!] ?? 0) + w;
+      }
 
-    if (song.genre != null) {
-      final w = completed ? 1.2 : 0.6;
-      _genreAffinity[song.genre!] = (_genreAffinity[song.genre!] ?? 0) + w;
-    }
+      if (song.genre != null) {
+        final w = completed ? 1.2 : 0.6;
+        _genreAffinity[song.genre!] = (_genreAffinity[song.genre!] ?? 0) + w;
+      }
 
-    _timePatterns.putIfAbsent(hour, () => {});
-    if (song.genre != null) {
-      _timePatterns[hour]![song.genre!] =
-          (_timePatterns[hour]![song.genre!] ?? 0) + 1;
+      _timePatterns.putIfAbsent(hour, () => {});
+      if (song.genre != null) {
+        _timePatterns[hour]![song.genre!] =
+            (_timePatterns[hour]![song.genre!] ?? 0) + 1;
+      }
     }
 
     await _saveData();
@@ -139,40 +140,44 @@ class RecommendationService extends ChangeNotifier {
   }
 
   Future<void> trackSkip(Song song) async {
-    if (!_enabled) return;
-
     _skipCounts[song.id] = (_skipCounts[song.id] ?? 0) + 1;
-
-    if (song.artist != null) {
-      _artistAffinity[song.artist!] =
-          (_artistAffinity[song.artist!] ?? 0) - 0.3;
-    }
 
     if (_profiles.containsKey(song.id)) {
       _profiles[song.id]!.skipCount++;
+    }
+
+    // Recommendation-specific affinity data is only updated when enabled
+    if (_enabled) {
+      if (song.artist != null) {
+        _artistAffinity[song.artist!] =
+            (_artistAffinity[song.artist!] ?? 0) - 0.3;
+      }
     }
 
     await _saveData();
   }
 
   Future<void> trackSongRating(Song song, int rating) async {
-    if (!_enabled || rating < 1 || rating > 5) return;
+    if (rating < 1 || rating > 5) return;
 
     final profile = _profiles[song.id];
     if (profile != null) {
       profile.userRating = rating;
     }
 
-    final weight = rating / 5.0;
+    // Recommendation-specific affinity data is only updated when enabled
+    if (_enabled) {
+      final weight = rating / 5.0;
 
-    if (song.artist != null) {
-      _artistRatingAffinity[song.artist!] =
-          (_artistRatingAffinity[song.artist!] ?? 0) + weight * 2.0;
-    }
+      if (song.artist != null) {
+        _artistRatingAffinity[song.artist!] =
+            (_artistRatingAffinity[song.artist!] ?? 0) + weight * 2.0;
+      }
 
-    if (song.genre != null) {
-      _genreRatingAffinity[song.genre!] =
-          (_genreRatingAffinity[song.genre!] ?? 0) + weight * 1.5;
+      if (song.genre != null) {
+        _genreRatingAffinity[song.genre!] =
+            (_genreRatingAffinity[song.genre!] ?? 0) + weight * 1.5;
+      }
     }
 
     await _saveData();
@@ -180,11 +185,14 @@ class RecommendationService extends ChangeNotifier {
   }
 
   Future<void> trackStarred(Song song, bool starred) async {
-    if (!_enabled) return;
-
     if (starred) {
       _starredSongs.add(song.id);
+    } else {
+      _starredSongs.remove(song.id);
+    }
 
+    // Recommendation-specific affinity data is only updated when enabled
+    if (_enabled && starred) {
       if (song.artist != null) {
         _artistAffinity[song.artist!] =
             (_artistAffinity[song.artist!] ?? 0) + 2.0;
@@ -193,8 +201,6 @@ class RecommendationService extends ChangeNotifier {
         _genreAffinity[song.genre!] =
             (_genreAffinity[song.genre!] ?? 0) + 1.5;
       }
-    } else {
-      _starredSongs.remove(song.id);
     }
 
     await _saveData();

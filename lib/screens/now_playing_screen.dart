@@ -18,6 +18,7 @@ import '../services/player_ui_settings_service.dart';
 import '../widgets/star_rating_widget.dart';
 import '../theme/app_theme.dart';
 import '../utils/navigation_helper.dart';
+import '../utils/screen_helper.dart';
 import '../widgets/synced_lyrics_view.dart';
 import '../widgets/compact_lyrics_view.dart';
 import 'album_screen.dart';
@@ -449,7 +450,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
             );
             _cachedImageUrl = subsonicService.getCoverArtUrl(
               song.coverArt,
-              size: 600,
+              size: 1200,
             );
             _cachedThumbnailUrl = subsonicService.getCoverArtUrl(
               song.coverArt,
@@ -789,8 +790,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                           const Spacer(flex: 2),
 
                           Container(
-                            width: 200,
-                            height: 200,
+                            width: ScreenHelper.isSmallScreen(context) ? 160 : 200,
+                            height: ScreenHelper.isSmallScreen(context) ? 160 : 200,
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
                                 begin: Alignment.topLeft,
@@ -808,22 +809,24 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                                 ),
                               ],
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.radio,
                               color: Colors.white,
-                              size: 100,
+                              size: ScreenHelper.radioIconSize(context),
                             ),
                           ),
 
                           const Spacer(),
 
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 32),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: ScreenHelper.playerHorizontalPadding(context),
+                            ),
                             child: Text(
                               station.name,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 28,
+                                fontSize: ScreenHelper.radioTitleFontSize(context),
                                 fontWeight: FontWeight.bold,
                               ),
                               textAlign: TextAlign.center,
@@ -874,8 +877,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                               return GestureDetector(
                                 onTap: provider.togglePlayPause,
                                 child: Container(
-                                  width: 80,
-                                  height: 80,
+                                  width: ScreenHelper.radioPlayButtonSize(context),
+                                  height: ScreenHelper.radioPlayButtonSize(context),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     shape: BoxShape.circle,
@@ -894,7 +897,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                                         ? Icons.pause_rounded
                                         : Icons.play_arrow_rounded,
                                     color: Colors.black,
-                                    size: 48,
+                                    size: ScreenHelper.radioPlayIconSize(context),
                                   ),
                                 ),
                               );
@@ -1137,12 +1140,17 @@ class _PlayerHeader extends StatelessWidget {
                   ),
                 ),
 
-              Selector<PlayerProvider, double>(
-                selector: (_, p) => p.playbackSpeed,
-                builder: (context, speed, _) => IconButton(
-                  tooltip:
-                      'Playback speed (${speed == 1.0 ? '1×' : '$speed×'})',
-                  onPressed: () => _showSpeedDialog(context),
+              Selector<PlayerProvider, (double, double, bool)>(
+                selector: (_, p) => (p.playbackSpeed, p.pitch, p.pitchCorrection),
+                builder: (context, data, _) {
+                  final (speed, pitch, correction) = data;
+                  final pitchLabel = correction
+                      ? 'pitch preserved'
+                      : 'pitch ${pitch.toStringAsFixed(2)}×';
+                  return IconButton(
+                    tooltip:
+                        'Speed ${speed == 1.0 ? '1×' : '$speed×'} · $pitchLabel',
+                    onPressed: () => _showSpeedDialog(context),
                   padding: const EdgeInsets.all(6),
                   constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                   icon: speed != 1.0
@@ -1159,7 +1167,8 @@ class _PlayerHeader extends StatelessWidget {
                           color: Colors.white,
                           size: 20,
                         ),
-                ),
+                  );
+                },
               ),
               Selector<PlayerProvider, bool>(
                 selector: (_, p) => p.hasSleepTimer,
@@ -1206,57 +1215,120 @@ class _PlayerHeader extends StatelessWidget {
             color: AppTheme.darkSurface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 8),
-              Container(
-                width: 36,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: AppTheme.darkDivider,
-                  borderRadius: BorderRadius.circular(2.5),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Playback Speed',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 8),
-              ...speeds.map(
-                (s) => ListTile(
-                  dense: true,
-                  title: Text(
-                    s == 1.0 ? 'Normal (1×)' : '$s×',
-                    style: TextStyle(
-                      color: player.playbackSpeed == s
-                          ? AppTheme.appleMusicRed
-                          : Colors.white,
-                      fontWeight: player.playbackSpeed == s
-                          ? FontWeight.bold
-                          : FontWeight.normal,
+          child: SafeArea(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 8),
+                  Container(
+                    width: 36,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: AppTheme.darkDivider,
+                      borderRadius: BorderRadius.circular(2.5),
                     ),
                   ),
-                  trailing: player.playbackSpeed == s
-                      ? const Icon(
-                          CupertinoIcons.checkmark,
-                          color: AppTheme.appleMusicRed,
-                          size: 16,
-                        )
-                      : null,
-                  onTap: () {
-                    player.setPlaybackSpeed(s);
-                    setSt(() {});
-                  },
-                ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Playback Speed',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...speeds.map(
+                    (s) => ListTile(
+                      dense: true,
+                      title: Text(
+                        s == 1.0 ? 'Normal (1×)' : '$s×',
+                        style: TextStyle(
+                          color: player.playbackSpeed == s
+                              ? AppTheme.appleMusicRed
+                              : Colors.white,
+                          fontWeight: player.playbackSpeed == s
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                        ),
+                      ),
+                      trailing: player.playbackSpeed == s
+                          ? const Icon(
+                              CupertinoIcons.checkmark,
+                              color: AppTheme.appleMusicRed,
+                              size: 16,
+                            )
+                          : null,
+                      onTap: () {
+                        player.setPlaybackSpeed(s);
+                        setSt(() {});
+                      },
+                    ),
+                  ),
+                  const Divider(color: AppTheme.darkDivider, indent: 16, endIndent: 16),
+                  SwitchListTile(
+                    dense: true,
+                    title: const Text(
+                      'Preserve pitch',
+                      style: TextStyle(color: Colors.white, fontSize: 15),
+                    ),
+                    subtitle: const Text(
+                      'Keep original pitch when changing speed',
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                    value: player.pitchCorrection,
+                    activeTrackColor: AppTheme.appleMusicRed,
+                    thumbColor: WidgetStateProperty.resolveWith((states) {
+                      if (states.contains(WidgetState.selected)) {
+                        return AppTheme.appleMusicRed;
+                      }
+                      return null;
+                    }),
+                    onChanged: (_) {
+                      player.togglePitchCorrection();
+                      setSt(() {});
+                    },
+                  ),
+                  if (!player.pitchCorrection) ...[
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Pitch',
+                            style: TextStyle(color: Colors.white, fontSize: 15),
+                          ),
+                          Text(
+                            '${player.pitch.toStringAsFixed(2)}×',
+                            style: const TextStyle(
+                              color: AppTheme.appleMusicRed,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Slider(
+                      value: player.pitch,
+                      min: 0.5,
+                      max: 2.0,
+                      divisions: 30,
+                      activeColor: AppTheme.appleMusicRed,
+                      inactiveColor: AppTheme.darkDivider,
+                      label: '${player.pitch.toStringAsFixed(2)}×',
+                      onChanged: (v) {
+                        player.setPitch(v);
+                        setSt(() {});
+                      },
+                    ),
+                  ],
+                  SizedBox(height: MediaQuery.of(ctx).padding.bottom + 8),
+                ],
               ),
-              SizedBox(height: MediaQuery.of(ctx).padding.bottom + 8),
-            ],
+            ),
           ),
         ),
       ),
@@ -1572,7 +1644,7 @@ class _AlbumArtworkSection extends StatelessWidget {
                             File(imageUrl),
                             key: ValueKey(imageUrl),
                             fit: BoxFit.contain,
-                            cacheWidth: 600,
+                            cacheWidth: 1200,
                             errorBuilder: (ctx, e, _) =>
                                 _buildNoArtPlaceholder(ctx),
                           )
@@ -1580,9 +1652,9 @@ class _AlbumArtworkSection extends StatelessWidget {
                             key: ValueKey(imageUrl),
                             imageUrl: imageUrl,
                             fit: BoxFit.contain,
-                            memCacheWidth: 600,
-                            maxWidthDiskCache: 600,
-                            maxHeightDiskCache: 600,
+                            memCacheWidth: 1200,
+                            maxWidthDiskCache: 1200,
+                            maxHeightDiskCache: 1200,
                             useOldImageOnUrlChange: true,
                             fadeInDuration: Duration.zero,
                             fadeOutDuration: Duration.zero,
@@ -1752,16 +1824,16 @@ class _SwipeableAlbumArtwork extends StatelessWidget {
                 File(previewImageUrl!),
                 key: ValueKey(previewImageUrl),
                 fit: BoxFit.contain,
-                cacheWidth: 600,
+                cacheWidth: 1200,
                 errorBuilder: (ctx, e, _) => _buildNoArtPlaceholder(ctx),
               )
             : CachedNetworkImage(
                 key: ValueKey(previewImageUrl),
                 imageUrl: previewImageUrl!,
                 fit: BoxFit.contain,
-                memCacheWidth: 600,
-                maxWidthDiskCache: 600,
-                maxHeightDiskCache: 600,
+                memCacheWidth: 1200,
+                maxWidthDiskCache: 1200,
+                maxHeightDiskCache: 1200,
                 useOldImageOnUrlChange: true,
                 fadeInDuration: Duration.zero,
                 fadeOutDuration: Duration.zero,
@@ -1836,7 +1908,9 @@ class _PlayerControlsState extends State<_PlayerControls> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
+      padding: EdgeInsets.symmetric(
+        horizontal: ScreenHelper.playerHorizontalPadding(context),
+      ),
       child: Column(
         children: [
           Selector<PlayerProvider, Song?>(
@@ -1951,9 +2025,9 @@ class _SongInfoState extends State<_SongInfo> {
             children: [
               Text(
                 widget.song!.title,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
-                  fontSize: 22,
+                  fontSize: ScreenHelper.titleFontSize(context),
                   fontWeight: FontWeight.bold,
                 ),
                 maxLines: 1,
@@ -1966,7 +2040,7 @@ class _SongInfoState extends State<_SongInfo> {
                 artistIdFallback: widget.song!.artistId,
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.7),
-                  fontSize: 18,
+                  fontSize: ScreenHelper.subtitleFontSize(context),
                 ),
                 onBeforeNavigate: () {
                   if (Navigator.canPop(context)) Navigator.pop(context);
@@ -2591,15 +2665,15 @@ class _PlaybackControls extends StatelessWidget {
             ),
             IconButton(
               onPressed: provider.skipPrevious,
-              icon: const Icon(
+              icon: Icon(
                 CupertinoIcons.backward_fill,
                 color: Colors.white,
-                size: 36,
+                size: ScreenHelper.skipButtonIconSize(context),
               ),
             ),
             Container(
-              width: 70,
-              height: 70,
+              width: ScreenHelper.playButtonContainerSize(context),
+              height: ScreenHelper.playButtonContainerSize(context),
               decoration: const BoxDecoration(
                 color: Colors.white,
                 shape: BoxShape.circle,
@@ -2611,7 +2685,7 @@ class _PlaybackControls extends StatelessWidget {
                       ? CupertinoIcons.pause_fill
                       : CupertinoIcons.play_fill,
                   color: Colors.black,
-                  size: 34,
+                  size: ScreenHelper.playButtonIconSize(context),
                 ),
               ),
             ),
@@ -2622,7 +2696,7 @@ class _PlaybackControls extends StatelessWidget {
                 color: hasNext
                     ? Colors.white
                     : Colors.white.withValues(alpha: 0.3),
-                size: 36,
+                size: ScreenHelper.skipButtonIconSize(context),
               ),
             ),
             IconButton(
@@ -2895,29 +2969,38 @@ class _QueueSheet extends StatelessWidget {
       maxChildSize: 0.95,
       builder: (context, scrollController) {
         return Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? AppTheme.darkSurface
-                : Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+          decoration: const BoxDecoration(
+            color: AppTheme.darkSurface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
           ),
           child: Column(
             children: [
               const SizedBox(height: 8),
-              Container(
-                width: 36,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: AppTheme.darkDivider,
-                  borderRadius: BorderRadius.circular(2.5),
+              GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                behavior: HitTestBehavior.opaque,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: AppTheme.darkDivider,
+                        borderRadius: BorderRadius.circular(2.5),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Playing Next',
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
-              Text(
-                'Playing Next',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(height: 16),
               Expanded(
                 child: Selector<PlayerProvider, (List<Song>, int)>(
                   selector: (_, p) => (p.queue, p.currentIndex),
@@ -2949,7 +3032,7 @@ class _QueueSheet extends StatelessWidget {
                           title: Text(
                             song.title,
                             style: TextStyle(
-                              color: isPlaying ? AppTheme.appleMusicRed : null,
+                              color: isPlaying ? AppTheme.appleMusicRed : Colors.white,
                               fontWeight: isPlaying ? FontWeight.w600 : null,
                             ),
                             maxLines: 1,
@@ -2957,11 +3040,14 @@ class _QueueSheet extends StatelessWidget {
                           ),
                           subtitle: Text(
                             song.artist ?? '',
+                            style: const TextStyle(
+                              color: AppTheme.lightSecondaryText,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                           trailing: IconButton(
-                            icon: const Icon(Icons.remove_circle_outline),
+                            icon: const Icon(Icons.remove_circle_outline, color: Colors.white70),
                             onPressed: () => provider.removeFromQueue(index),
                           ),
                           onTap: () => provider.skipToIndex(index),

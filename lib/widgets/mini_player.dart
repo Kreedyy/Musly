@@ -1,13 +1,16 @@
 import 'dart:io';
 import 'dart:ui';
+import 'package:flutter/cupertino.dart' hide RepeatMode;
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:provider/provider.dart';
 import '../models/song.dart';
 import '../models/radio_station.dart';
 import '../providers/player_provider.dart';
+import '../services/player_ui_settings_service.dart';
 import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/screen_helper.dart';
 import 'album_artwork.dart';
 
 class MiniPlayer extends StatelessWidget {
@@ -260,26 +263,101 @@ class _MiniPlayerControls extends StatelessWidget {
       builder: (context, data, _) {
         final (isPlaying, hasNext) = data;
         final provider = context.read<PlayerProvider>();
+        final playerUiSettings = PlayerUiSettingsService();
 
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              onPressed: provider.togglePlayPause,
-              icon: Icon(
-                isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                size: 32,
-              ),
-              color: color,
-            ),
+        return ValueListenableBuilder<bool>(
+          valueListenable: playerUiSettings.showMiniPlayerHeartNotifier,
+          builder: (context, showHeart, _) {
+            return ValueListenableBuilder<bool>(
+              valueListenable: playerUiSettings.showMiniPlayerRepeatNotifier,
+              builder: (context, showRepeat, _) {
+                return ValueListenableBuilder<bool>(
+                  valueListenable: playerUiSettings.showMiniPlayerShuffleNotifier,
+                  builder: (context, showShuffle, _) {
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (showHeart && !isRadio)
+                          Selector<PlayerProvider, bool>(
+                            selector: (_, p) => p.currentSong?.starred == true,
+                            builder: (context, isStarred, _) {
+                              return IconButton(
+                                onPressed: provider.toggleFavorite,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                                icon: Icon(
+                                  isStarred ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                  size: ScreenHelper.miniPlayerIconSize(context),
+                                ),
+                                color: isStarred ? AppTheme.appleMusicRed : color,
+                              );
+                            },
+                          ),
 
-            if (!isRadio)
-              IconButton(
-                onPressed: hasNext ? provider.skipNext : null,
-                icon: const Icon(Icons.skip_next_rounded, size: 28),
-                color: color,
-              ),
-          ],
+                        if (showShuffle && !isRadio)
+                          Selector<PlayerProvider, bool>(
+                            selector: (_, p) => p.shuffleEnabled,
+                            builder: (context, shuffleEnabled, _) {
+                              return IconButton(
+                                onPressed: provider.toggleShuffle,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                                icon: Icon(
+                                  CupertinoIcons.shuffle,
+                                  size: ScreenHelper.miniPlayerIconSize(context),
+                                ),
+                                color: shuffleEnabled ? Theme.of(context).colorScheme.primary : color,
+                              );
+                            },
+                          ),
+
+                        IconButton(
+                          onPressed: provider.togglePlayPause,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                          icon: Icon(
+                            isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                            size: ScreenHelper.miniPlayerPlayIconSize(context),
+                          ),
+                          color: color,
+                        ),
+
+                        if (showRepeat && !isRadio)
+                          Selector<PlayerProvider, RepeatMode>(
+                            selector: (_, p) => p.repeatMode,
+                            builder: (context, repeatMode, _) {
+                              IconData icon;
+                              bool active = repeatMode != RepeatMode.off;
+                              if (repeatMode == RepeatMode.one) {
+                                icon = CupertinoIcons.repeat_1;
+                              } else {
+                                icon = CupertinoIcons.repeat;
+                              }
+                              return IconButton(
+                                onPressed: provider.toggleRepeat,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                                icon: Icon(icon, size: ScreenHelper.miniPlayerIconSize(context)),
+                                color: active ? Theme.of(context).colorScheme.primary : color,
+                              );
+                            },
+                          ),
+
+                        if (!isRadio)
+                          IconButton(
+                            onPressed: hasNext ? provider.skipNext : null,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                            icon: Icon(Icons.skip_next_rounded, size: ScreenHelper.miniPlayerSkipIconSize(context)),
+                            color: color,
+                          ),
+                      ],
+                    );
+                  },
+                );
+              },
+            );
+          },
         );
       },
     );
