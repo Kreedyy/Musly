@@ -57,11 +57,18 @@ class _ArtistScreenState extends State<ArtistScreen> {
         albums = await subsonicService.getArtistAlbums(widget.artistId);
         if (albums.isNotEmpty) {
           final topSongIds = topSongs.map((s) => s.id).toSet();
-          final allAlbumSongs = (await Future.wait(
-                  albums.map((a) => subsonicService.getAlbumSongs(a.id))))
-              .expand((songs) => songs)
-              .where((s) => !topSongIds.contains(s.id))
-              .toList();
+          final seenIds = {...topSongIds};
+          const chunkSize = 5;
+          final allAlbumSongs = <Song>[];
+          for (var i = 0; i < albums.length; i += chunkSize) {
+            final chunk =
+                albums.sublist(i, (i + chunkSize).clamp(0, albums.length));
+            final results = await Future.wait(
+                chunk.map((a) => subsonicService.getAlbumSongs(a.id)));
+            allAlbumSongs.addAll(results
+                .expand((songs) => songs)
+                .where((s) => seenIds.add(s.id)));
+          }
           topSongs = [...topSongs, ...allAlbumSongs];
         }
       }
