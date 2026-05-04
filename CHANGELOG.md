@@ -5,6 +5,36 @@ All notable changes to Musly will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.11] - 2026-05-04
+
+### Added
+- **Pitch Control & Speed Adjustment** ([#145](https://github.com/dddevid/Musly/issues/145))
+  - Independent pitch slider (0.5× – 2.0×) in the speed bottom sheet
+  - "Preserve pitch" toggle: keeps original pitch when changing playback speed (time-stretching)
+  - When disabled, pitch follows speed like a vinyl record
+  - Native ExoPlayer bridge on Android via reflection for real pitch control
+  - iOS stub ready for future AVAudioEngine integration
+- **iPhone SE / Small Screen Compatibility**
+  - Responsive layouts for 375×667 pt screens (iPhone SE, iPhone 8)
+  - Reduced padding, font sizes, and control sizes across Now Playing, Login, Album, and Mini Player
+  - `ScreenHelper` utility for adaptive sizing based on screen width
+
+### Fixed
+- **Listening History Blank** ([#146](https://github.com/dddevid/Musly/issues/146))
+  - History screen was empty when recommendations were disabled
+  - `trackSongPlay`, `trackSkip`, `trackSongRating`, and `trackStarred` now always record listening data regardless of recommendation toggle
+- **Emulator Detection (Pixel 9+)**
+  - Replaced `device_info_plus` string-matching with `safe_device: ^1.3.10`
+  - Pixel 9+ devices were falsely blocked as emulators due to "google"/"generic" strings in device info
+- **Speed/Pitch Race Condition**
+  - Fixed bug where changing playback speed reset pitch to 1.0
+  - Unified `setPlaybackParameters(speed, pitch)` call applied atomically to ExoPlayer
+  - Eliminates race between `just_audio.setSpeed()` and custom pitch reflection
+
+### Changed
+- **CI/CD**: Android release builds now produce a universal APK instead of split-per-ABI
+  - Fixes issue where installing a new APK over an old one required uninstalling first
+
 ## [1.0.10] - 2026-05-04
 
 ### Added
