@@ -156,10 +156,23 @@ class MuslyAudioHandler extends BaseAudioHandler with SeekHandler {
 
   // ---------------------------------------------------------------------------
 
+  /// Propagates pitch changes to the native player.
+  /// TODO: bridge to ExoPlayer/AVPlayer native pitch APIs.
+  Future<void> setPitch(double pitch) async {
+    // just_audio doesn't expose setPitch. This needs a custom platform
+    // channel that reaches into the underlying ExoPlayer (Android) or
+    // AVPlayer (iOS) to call setPlaybackParameters(speed, pitch) or
+    // attach an AVAudioUnitTimePitch node.
+  }
+
   @override
   Future<void> customAction(String name, [Map<String, dynamic>? extras]) async {
     if (name == 'dispose') {
       await _player.dispose();
+    }
+    if (name == 'setPitch') {
+      final pitch = (extras?['pitch'] as num?)?.toDouble() ?? 1.0;
+      await setPitch(pitch);
     }
   }
 }

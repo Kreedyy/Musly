@@ -83,6 +83,8 @@ class PlayerProvider extends ChangeNotifier {
   Timer? _sleepTimerFadePeriodicTimer;
 
   double _playbackSpeed = 1.0;
+  double _pitch = 1.0;
+  bool _pitchCorrection = true;
 
   PlayerProvider(
     this._subsonicService,
@@ -773,9 +775,38 @@ class PlayerProvider extends ChangeNotifier {
 
   double get playbackSpeed => _playbackSpeed;
 
+  double get pitch => _pitch;
+
+  bool get pitchCorrection => _pitchCorrection;
+
   Future<void> setPlaybackSpeed(double speed) async {
     _playbackSpeed = speed.clamp(0.25, 4.0);
     await _audioPlayer.setSpeed(_playbackSpeed);
+
+    if (_pitchCorrection) {
+      // Preserve original pitch regardless of speed (time-stretching).
+      await setPitch(1.0);
+    } else {
+      // Natural vinyl-style effect: pitch follows speed.
+      await setPitch(_playbackSpeed);
+    }
+
+    notifyListeners();
+  }
+
+  Future<void> setPitch(double pitch) async {
+    _pitch = pitch.clamp(0.5, 2.0);
+    await _audioHandler.setPitch(_pitch);
+    notifyListeners();
+  }
+
+  Future<void> togglePitchCorrection() async {
+    _pitchCorrection = !_pitchCorrection;
+    if (_pitchCorrection) {
+      await setPitch(1.0);
+    } else {
+      await setPitch(_playbackSpeed);
+    }
     notifyListeners();
   }
 

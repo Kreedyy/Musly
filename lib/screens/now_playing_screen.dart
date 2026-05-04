@@ -1140,12 +1140,17 @@ class _PlayerHeader extends StatelessWidget {
                   ),
                 ),
 
-              Selector<PlayerProvider, double>(
-                selector: (_, p) => p.playbackSpeed,
-                builder: (context, speed, _) => IconButton(
-                  tooltip:
-                      'Playback speed (${speed == 1.0 ? '1×' : '$speed×'})',
-                  onPressed: () => _showSpeedDialog(context),
+              Selector<PlayerProvider, (double, double, bool)>(
+                selector: (_, p) => (p.playbackSpeed, p.pitch, p.pitchCorrection),
+                builder: (context, data, _) {
+                  final (speed, pitch, correction) = data;
+                  final pitchLabel = correction
+                      ? 'pitch preserved'
+                      : 'pitch ${pitch.toStringAsFixed(2)}×';
+                  return IconButton(
+                    tooltip:
+                        'Speed ${speed == 1.0 ? '1×' : '$speed×'} · $pitchLabel',
+                    onPressed: () => _showSpeedDialog(context),
                   padding: const EdgeInsets.all(6),
                   constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                   icon: speed != 1.0
@@ -1162,7 +1167,8 @@ class _PlayerHeader extends StatelessWidget {
                           color: Colors.white,
                           size: 20,
                         ),
-                ),
+                  );
+                },
               ),
               Selector<PlayerProvider, bool>(
                 selector: (_, p) => p.hasSleepTimer,
@@ -1209,57 +1215,120 @@ class _PlayerHeader extends StatelessWidget {
             color: AppTheme.darkSurface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 8),
-              Container(
-                width: 36,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: AppTheme.darkDivider,
-                  borderRadius: BorderRadius.circular(2.5),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Playback Speed',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 8),
-              ...speeds.map(
-                (s) => ListTile(
-                  dense: true,
-                  title: Text(
-                    s == 1.0 ? 'Normal (1×)' : '$s×',
-                    style: TextStyle(
-                      color: player.playbackSpeed == s
-                          ? AppTheme.appleMusicRed
-                          : Colors.white,
-                      fontWeight: player.playbackSpeed == s
-                          ? FontWeight.bold
-                          : FontWeight.normal,
+          child: SafeArea(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 8),
+                  Container(
+                    width: 36,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: AppTheme.darkDivider,
+                      borderRadius: BorderRadius.circular(2.5),
                     ),
                   ),
-                  trailing: player.playbackSpeed == s
-                      ? const Icon(
-                          CupertinoIcons.checkmark,
-                          color: AppTheme.appleMusicRed,
-                          size: 16,
-                        )
-                      : null,
-                  onTap: () {
-                    player.setPlaybackSpeed(s);
-                    setSt(() {});
-                  },
-                ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Playback Speed',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...speeds.map(
+                    (s) => ListTile(
+                      dense: true,
+                      title: Text(
+                        s == 1.0 ? 'Normal (1×)' : '$s×',
+                        style: TextStyle(
+                          color: player.playbackSpeed == s
+                              ? AppTheme.appleMusicRed
+                              : Colors.white,
+                          fontWeight: player.playbackSpeed == s
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                        ),
+                      ),
+                      trailing: player.playbackSpeed == s
+                          ? const Icon(
+                              CupertinoIcons.checkmark,
+                              color: AppTheme.appleMusicRed,
+                              size: 16,
+                            )
+                          : null,
+                      onTap: () {
+                        player.setPlaybackSpeed(s);
+                        setSt(() {});
+                      },
+                    ),
+                  ),
+                  const Divider(color: AppTheme.darkDivider, indent: 16, endIndent: 16),
+                  SwitchListTile(
+                    dense: true,
+                    title: const Text(
+                      'Preserve pitch',
+                      style: TextStyle(color: Colors.white, fontSize: 15),
+                    ),
+                    subtitle: const Text(
+                      'Keep original pitch when changing speed',
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                    value: player.pitchCorrection,
+                    activeTrackColor: AppTheme.appleMusicRed,
+                    thumbColor: WidgetStateProperty.resolveWith((states) {
+                      if (states.contains(WidgetState.selected)) {
+                        return AppTheme.appleMusicRed;
+                      }
+                      return null;
+                    }),
+                    onChanged: (_) {
+                      player.togglePitchCorrection();
+                      setSt(() {});
+                    },
+                  ),
+                  if (!player.pitchCorrection) ...[
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Pitch',
+                            style: TextStyle(color: Colors.white, fontSize: 15),
+                          ),
+                          Text(
+                            '${player.pitch.toStringAsFixed(2)}×',
+                            style: const TextStyle(
+                              color: AppTheme.appleMusicRed,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Slider(
+                      value: player.pitch,
+                      min: 0.5,
+                      max: 2.0,
+                      divisions: 30,
+                      activeColor: AppTheme.appleMusicRed,
+                      inactiveColor: AppTheme.darkDivider,
+                      label: '${player.pitch.toStringAsFixed(2)}×',
+                      onChanged: (v) {
+                        player.setPitch(v);
+                        setSt(() {});
+                      },
+                    ),
+                  ],
+                  SizedBox(height: MediaQuery.of(ctx).padding.bottom + 8),
+                ],
               ),
-              SizedBox(height: MediaQuery.of(ctx).padding.bottom + 8),
-            ],
+            ),
           ),
         ),
       ),
